@@ -151,7 +151,7 @@ export default function Home() {
   if (!game) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p className="text-lg text-zinc-500">로딩 중...</p>
+        <p className="text-lg text-zinc-500 dark:text-zinc-400">로딩 중...</p>
       </div>
     );
   }
@@ -159,11 +159,11 @@ export default function Home() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-12">
       <h1 className="mb-1 text-center text-3xl font-bold tracking-tight">헤아리</h1>
-      <p className="mb-6 text-center text-sm text-zinc-500">초성을 보고 단어를 맞춰보세요</p>
-      <p className="-mt-4 mb-6 text-center text-xs text-zinc-400">{game.date}</p>
+      <p className="mb-1 text-center text-sm text-zinc-500 dark:text-zinc-400">초성을 보고 단어를 맞춰보세요</p>
+      <p className="mb-6 text-center text-xs text-zinc-400 dark:text-zinc-500">{game.date}</p>
 
       <div className="mb-6 text-center">
-        <div className="text-7xl font-bold tracking-widest text-zinc-800">
+        <div className="text-7xl font-bold tracking-widest text-zinc-800 dark:text-zinc-200">
           {game.chosung.split('').map((c, i) => (
             <span key={i} className="mx-1">{c}</span>
           ))}
@@ -174,7 +174,7 @@ export default function Home() {
         <div className="relative flex-1">
           <input
             ref={inputRef}
-            className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-lg focus:border-zinc-500 focus:outline-none disabled:opacity-50"
+            className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-lg text-zinc-900 focus:border-zinc-500 focus:outline-none disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-zinc-400"
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -183,11 +183,11 @@ export default function Home() {
             disabled={solved || loading}
           />
           {dupMsg && (
-            <p className="absolute -bottom-5 left-1 text-xs text-orange-500">{dupMsg}</p>
+            <p className="absolute -bottom-5 left-1 text-xs text-orange-500 dark:text-orange-400">{dupMsg}</p>
           )}
         </div>
         <button
-          className="rounded-lg bg-zinc-800 px-6 py-3 text-white transition-colors hover:bg-zinc-700 disabled:opacity-50"
+          className="rounded-lg bg-zinc-800 px-6 py-3 text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-700 dark:hover:bg-zinc-600"
           onClick={submit}
           disabled={solved || loading || !input.trim()}
         >
@@ -196,15 +196,15 @@ export default function Home() {
       </div>
 
       {loading && (
-        <p className="mt-4 text-center text-sm text-zinc-400">힌트 생성 중...</p>
+        <p className="mt-4 text-center text-sm text-zinc-400 dark:text-zinc-500">힌트 생성 중...</p>
       )}
 
       {solved && (
-        <div className="mt-6 rounded-xl bg-green-50 px-6 py-6 text-center">
-          <p className="text-2xl font-bold text-green-700">정답입니다!</p>
-          <p className="mt-2 text-green-600">{attempts}번 만에 맞추셨어요</p>
+        <div className="mt-6 rounded-xl border border-green-200 bg-green-50 px-6 py-6 text-center dark:border-green-800 dark:bg-green-950">
+          <p className="text-2xl font-bold text-green-700 dark:text-green-400">정답입니다!</p>
+          <p className="mt-2 text-green-600 dark:text-green-400">{attempts}번 만에 맞추셨어요</p>
           <button
-            className="mt-4 rounded-lg bg-green-600 px-5 py-2 text-sm text-white transition-colors hover:bg-green-500"
+            className="mt-4 rounded-lg bg-green-600 px-5 py-2 text-sm text-white transition-colors hover:bg-green-500 dark:bg-green-700 dark:hover:bg-green-600"
             onClick={share}
           >
             {copied ? '복사됨!' : '공유하기'}
@@ -219,12 +219,12 @@ export default function Home() {
               key={i}
               className={`rounded-lg border px-4 py-3 text-sm ${
                 entry.result.correct
-                  ? 'border-green-200 bg-green-50 text-green-700'
-                  : 'border-zinc-200 bg-white text-zinc-700'
+                  ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400'
+                  : 'border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
               }`}
             >
               <span className="font-medium">{entry.input}</span>
-              <span className="ml-2 text-zinc-400">
+              <span className="ml-2 text-zinc-400 dark:text-zinc-500">
                 {entry.result.correct
                   ? '정답!'
                   : !entry.result.valid
