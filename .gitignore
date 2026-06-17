@@ -35,6 +35,7 @@ yarn-error.log*
 
 # database
 cache.db
+data/
 
 # vercel
 .vercel

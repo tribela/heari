@@ -2,7 +2,8 @@ import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 import fs from 'fs';
 import path from 'path';
 
-const DB_PATH = path.join(process.cwd(), 'cache.db');
+const DATA_DIR = path.join(process.cwd(), 'data');
+const DB_PATH = path.join(DATA_DIR, 'cache.db');
 
 let db: SqlJsDatabase | null = null;
 let initPromise: Promise<void> | null = null;
@@ -14,6 +15,8 @@ async function ensureDb(): Promise<SqlJsDatabase> {
     return db!;
   }
   initPromise = (async () => {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
     const SQL = await initSqlJs({
       locateFile: (file: string) =>
         path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', file),

@@ -1,5 +1,6 @@
 node_modules
 .next
+data/
 cache.db
 .env
 .git
