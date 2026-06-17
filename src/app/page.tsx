@@ -157,7 +157,7 @@ export default function Home() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-12">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-12 animate-fade-in">
       <h1 className="mb-1 text-center text-3xl font-bold tracking-tight">헤아리</h1>
       <p className="mb-1 text-center text-sm text-zinc-500 dark:text-zinc-400">초성을 보고 단어를 맞춰보세요</p>
       <p className="mb-6 text-center text-xs text-zinc-400 dark:text-zinc-500">{game.date}</p>
@@ -165,7 +165,7 @@ export default function Home() {
       <div className="mb-6 text-center">
         <div className="text-7xl font-bold tracking-widest text-zinc-800 dark:text-zinc-200">
           {game.chosung.split('').map((c, i) => (
-            <span key={i} className="mx-1">{c}</span>
+            <span key={i} className="chosung-char mx-1" style={{ animationDelay: `${i * 0.12}s` }}>{c}</span>
           ))}
         </div>
       </div>
@@ -183,7 +183,7 @@ export default function Home() {
             disabled={solved || loading}
           />
           {dupMsg && (
-            <p className="absolute -bottom-5 left-1 text-xs text-orange-500 dark:text-orange-400">{dupMsg}</p>
+            <p className="absolute -bottom-5 left-1 text-xs text-orange-500 animate-shake dark:text-orange-400">{dupMsg}</p>
           )}
         </div>
         <button
@@ -196,11 +196,16 @@ export default function Home() {
       </div>
 
       {loading && (
-        <p className="mt-4 text-center text-sm text-zinc-400 dark:text-zinc-500">힌트 생성 중...</p>
+        <p className="mt-4 text-center text-sm text-zinc-400 dark:text-zinc-500">
+          힌트 생성 중
+          <span className="loading-dot ml-0.5">•</span>
+          <span className="loading-dot">•</span>
+          <span className="loading-dot">•</span>
+        </p>
       )}
 
       {solved && (
-        <div className="mt-6 rounded-xl border border-green-200 bg-green-50 px-6 py-6 text-center dark:border-green-800 dark:bg-green-950">
+        <div className="mt-6 animate-pop-in rounded-xl border border-green-200 bg-green-50 px-6 py-6 text-center dark:border-green-800 dark:bg-green-950">
           <p className="text-2xl font-bold text-green-700 dark:text-green-400">정답입니다!</p>
           <p className="mt-2 text-green-600 dark:text-green-400">{attempts}번 만에 맞추셨어요</p>
           <button
@@ -217,7 +222,7 @@ export default function Home() {
           {logs.map((entry, i) => (
             <div
               key={i}
-              className={`rounded-lg border px-4 py-3 text-sm ${
+              className={`log-enter rounded-lg border px-4 py-3 text-sm ${
                 entry.result.correct
                   ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400'
                   : 'border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
