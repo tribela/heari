@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error('getHint error:', e);
     return NextResponse.json(
-      { correct: false, valid: true, hint: `'${trimmed}'보다는 정답에 가깝습니다` }
+      { correct: false, valid: true, hint: `'${trimmed}'은 정답이 아닙니다` }
     );
   }
 }
