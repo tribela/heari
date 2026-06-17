@@ -160,6 +160,7 @@ export default function Home() {
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-12">
       <h1 className="mb-1 text-center text-3xl font-bold tracking-tight">헤아리</h1>
       <p className="mb-6 text-center text-sm text-zinc-500">초성을 보고 단어를 맞춰보세요</p>
+      <p className="-mt-4 mb-6 text-center text-xs text-zinc-400">{game.date}</p>
 
       <div className="mb-6 text-center">
         <div className="text-7xl font-bold tracking-widest text-zinc-800">
