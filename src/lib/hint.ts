@@ -28,7 +28,7 @@ async function callOpenRouter(input: string, answer: string): Promise<string> {
           role: 'system',
           content: `정답: '${answer}', 입력: '${input}'.
 입력을 정답과 추상적으로 연결하는 한국어 한 문장(20자 내외)을 작성.
-반드시 "'${input}'보다는 [추상적 표현]" 형식으로만 답변.
+반드시 "'${input}'보다는 ..." 형식으로만 답변. ... 부분은 추상적 표현으로 채움. 따옴표나 괄호는 절대 사용하지 마.
 정답 단어 직접 언급 금지.
 매번 같은 패턴 반복하지 말고, 입력과 정답의 관계를 다양한 각도에서 은유적으로 표현.`,
         },
