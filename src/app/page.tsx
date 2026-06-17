@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Share2, ClipboardCopy, Check } from 'lucide-react';
+import { SiMastodon, SiMisskey } from 'react-icons/si';
 
 type GameData = {
   chosung: string;
@@ -41,7 +43,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [dupMsg, setDupMsg] = useState('');
+  const [fediInstance, setFediInstance] = useState('');
+  const [showFediInput, setShowFediInput] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fediRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('heari_state');
@@ -68,6 +73,7 @@ export default function Home() {
     fetch('/api/game')
       .then(r => r.json())
       .then((data: GameData) => setGame(data));
+    setFediInstance(localStorage.getItem('fedi_instance') ?? '');
   }, []);
 
   useEffect(() => {
@@ -86,6 +92,12 @@ export default function Home() {
       inputRef.current.focus();
     }
   }, [solved, loading]);
+
+  useEffect(() => {
+    if (showFediInput && fediRef.current) {
+      fediRef.current.focus();
+    }
+  }, [showFediInput]);
 
   const submit = useCallback(async () => {
     const val = input.trim();
@@ -135,18 +147,38 @@ export default function Home() {
 
   const share = async () => {
     if (!game) return;
+    const text = shareLines().join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  };
+
+  const shareFedi = () => setShowFediInput(true);
+
+  const confirmFediInstance = () => {
+    const val = fediRef.current?.value.trim();
+    if (!val) return;
+    localStorage.setItem('fedi_instance', val);
+    setFediInstance(val);
+    setShowFediInput(false);
+    const lines = shareLines();
+    window.open(`https://${val}/share?text=${encodeURIComponent(lines.join('\n'))}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const shareLines = () => {
+    if (!game) return [];
     const lastHint = logs.find(e => !e.result.correct && e.result.valid && 'hint' in e.result)?.result as { hint: string } | undefined;
     const lines = [
       `${game.date} 헤아리 "${game.chosung}"`,
     ];
     if (lastHint) lines.push(lastHint.hint);
     lines.push(`${attempts}번의 헤아림`);
-    const text = lines.join('\n');
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
+    lines.push(window.location.origin);
+    lines.push('');
+    lines.push('#헤아리');
+    return lines;
   };
 
   if (!game) {
@@ -158,6 +190,7 @@ export default function Home() {
   }
 
   return (
+    <>
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-12 animate-fade-in">
       <h1 className="mb-1 text-center text-3xl font-bold tracking-tight">헤아리</h1>
       <p className="mb-1 text-center text-sm text-zinc-500 dark:text-zinc-400">초성을 보고 단어를 맞춰보세요</p>
@@ -208,12 +241,26 @@ export default function Home() {
         <div className="mt-6 animate-pop-in rounded-xl border border-green-200 bg-green-50 px-6 py-6 text-center dark:border-green-800 dark:bg-green-950">
           <p className="text-2xl font-bold text-green-700 dark:text-green-400">정답입니다!</p>
           <p className="mt-2 text-green-600 dark:text-green-400">{attempts}번 만에 맞추셨어요</p>
-          <button
-            className="mt-4 rounded-lg bg-green-600 px-5 py-2 text-sm text-white transition-colors hover:bg-green-500 dark:bg-green-700 dark:hover:bg-green-600"
-            onClick={share}
-          >
-            {copied ? '복사됨!' : '공유하기'}
-          </button>
+          <div className="mt-4 flex items-center justify-center gap-1.5">
+            <Share2 className="mr-1 h-5 w-5 text-green-600 dark:text-green-400" />
+            <button
+              className="rounded-lg bg-green-600 p-2 text-white transition-colors hover:bg-green-500 dark:bg-green-700 dark:hover:bg-green-600"
+              onClick={share}
+              title="클립보드에 복사"
+            >
+              {copied ? <Check className="h-5 w-5" /> : <ClipboardCopy className="h-5 w-5" />}
+            </button>
+            <button
+              className="rounded-lg bg-green-600 p-2 text-white transition-colors hover:bg-green-500 dark:bg-green-700 dark:hover:bg-green-600"
+              onClick={shareFedi}
+              title="마스토돈/미스키로 공유"
+            >
+              <span className="flex items-center gap-1.5">
+                <SiMastodon className="h-5 w-5" />
+                <SiMisskey className="h-5 w-5" />
+              </span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -241,5 +288,35 @@ export default function Home() {
         </div>
       )}
     </div>
+
+    {showFediInput && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowFediInput(false)}>
+        <div className="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-800" onClick={e => e.stopPropagation()}>
+          <p className="mb-3 text-sm font-medium">마스토돈/미스키 인스턴스 주소를 입력하세요</p>
+          <div className="flex gap-2">
+            <input
+              ref={fediRef}
+              className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-700"
+              placeholder="mastodon.social"
+              defaultValue={fediInstance}
+              onKeyDown={e => e.key === 'Enter' && confirmFediInstance()}
+            />
+            <button
+              className="rounded-lg bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-500"
+              onClick={confirmFediInstance}
+            >
+              확인
+            </button>
+            <button
+              className="rounded-lg bg-zinc-200 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-600"
+              onClick={() => setShowFediInput(false)}
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
