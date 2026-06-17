@@ -17,6 +17,7 @@ type GuessResult =
 type LogEntry = {
   input: string;
   result: GuessResult;
+  attempt: number;
 };
 
 const CHOSUNG = [
@@ -162,7 +163,7 @@ export default function Home() {
         setLongestStreak(longest);
         localStorage.setItem('heari_streak', JSON.stringify({ current: cur, longest, lastDate: today }));
       }
-      setLogs(l => [{ input: val, result: data }, ...l]);
+      setLogs(l => [{ input: val, result: data, attempt: (data.valid ? prevAttempts + 1 : prevAttempts) }, ...l]);
     } catch { /* ignore */ }
     setLoading(false);
     setInput('');
@@ -306,7 +307,8 @@ export default function Home() {
                   : 'border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
               }`}
             >
-              <span className="font-medium">{entry.input}</span>
+              <span className="mr-1 text-xs text-zinc-300 dark:text-zinc-600">{entry.attempt ?? (logs.length - i)}.</span>
+            <span className="font-medium">{entry.input}</span>
               <span className="ml-2 text-zinc-400 dark:text-zinc-500">
                 {entry.result.correct
                   ? '정답!'
