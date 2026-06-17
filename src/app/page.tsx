@@ -179,7 +179,6 @@ export default function Home() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="정답 입력"
-            maxLength={3}
             disabled={solved || loading}
           />
           {dupMsg && (

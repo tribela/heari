@@ -67,7 +67,7 @@ export function isChosungMatch(input: string, answer: string): boolean {
 }
 
 export function isValidInput(input: string): boolean {
-  if (input.length < 2 || input.length > 3) return false;
+  if (input.length < 2) return false;
   for (const ch of input) {
     const code = ch.charCodeAt(0);
     if (code < 0xAC00 || code > 0xD7A3) return false;

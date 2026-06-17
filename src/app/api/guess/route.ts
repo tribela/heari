@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 
   if (!isValidInput(trimmed)) {
     return NextResponse.json(
-      { correct: false, valid: false, reason: '2-3글자의 한글 단어를 입력하세요' }
+      { correct: false, valid: false, reason: '올바른 한글 단어를 입력하세요' }
     );
   }
 
