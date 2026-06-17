@@ -45,6 +45,8 @@ export default function Home() {
   const [dupMsg, setDupMsg] = useState('');
   const [fediInstance, setFediInstance] = useState('');
   const [showFediInput, setShowFediInput] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const fediRef = useRef<HTMLInputElement>(null);
 
@@ -74,6 +76,14 @@ export default function Home() {
       .then(r => r.json())
       .then((data: GameData) => setGame(data));
     setFediInstance(localStorage.getItem('fedi_instance') ?? '');
+    const s = localStorage.getItem('heari_streak');
+    if (s) {
+      try {
+        const { current, longest } = JSON.parse(s);
+        setStreak(current ?? 0);
+        setLongestStreak(longest ?? 0);
+      } catch { /* ignore */ }
+    }
   }, []);
 
   useEffect(() => {
@@ -134,6 +144,23 @@ export default function Home() {
       }
       if (data.correct) {
         setSolved(true);
+        const kst = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+        const today = `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, '0')}-${String(kst.getUTCDate()).padStart(2, '0')}`;
+        kst.setDate(kst.getDate() - 1);
+        const yesterday = `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, '0')}-${String(kst.getUTCDate()).padStart(2, '0')}`;
+        const s = localStorage.getItem('heari_streak');
+        let cur = 1;
+        if (s) {
+          try {
+            const prev = JSON.parse(s);
+            if (prev.lastDate === yesterday) cur = (prev.current ?? 0) + 1;
+            else if (prev.lastDate === today) cur = prev.current ?? 1;
+          } catch { /* ignore */ }
+        }
+        const longest = Math.max(cur, longestStreak);
+        setStreak(cur);
+        setLongestStreak(longest);
+        localStorage.setItem('heari_streak', JSON.stringify({ current: cur, longest, lastDate: today }));
       }
       setLogs(l => [{ input: val, result: data }, ...l]);
     } catch { /* ignore */ }
@@ -241,6 +268,10 @@ export default function Home() {
         <div className="mt-6 animate-pop-in rounded-xl border border-green-200 bg-green-50 px-6 py-6 text-center dark:border-green-800 dark:bg-green-950">
           <p className="text-2xl font-bold text-green-700 dark:text-green-400">정답입니다!</p>
           <p className="mt-2 text-green-600 dark:text-green-400">{attempts}번 만에 맞추셨어요</p>
+          <p className="mt-1 text-sm text-green-500 dark:text-green-500">
+            {streak}일 연속 정답
+            {longestStreak > streak && <span className="ml-2 text-green-400">최고 {longestStreak}일</span>}
+          </p>
           <div className="mt-4 flex items-center justify-center gap-1.5">
             <Share2 className="mr-1 h-5 w-5 text-green-600 dark:text-green-400" />
             <button
