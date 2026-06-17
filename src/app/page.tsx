@@ -53,7 +53,7 @@ export default function Home() {
             .then(r => r.json())
             .then((data: GameData) => {
               setGame(data);
-              if (state.date === data.date) {
+              if (state.date === data.date && state.chosung === data.chosung) {
                 setAttempts(state.attempts ?? 0);
                 setSolved(state.solved ?? false);
                 setLogs(state.logs ?? []);
@@ -74,6 +74,7 @@ export default function Home() {
     if (!game) return;
     localStorage.setItem('heari_state', JSON.stringify({
       date: game.date,
+      chosung: game.chosung,
       attempts,
       solved,
       logs,
