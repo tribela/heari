@@ -182,6 +182,14 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input: val }),
       });
+
+      if (res.status === 429) {
+        setDupMsg('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
+        setLoading(false);
+        setInput('');
+        return;
+      }
+
       const data: GuessResult = await res.json();
 
       if (data.date !== game.date) {
@@ -227,6 +235,11 @@ export default function Home() {
     setLoading(true);
     try {
       const res = await fetch('/api/hint');
+      if (res.status === 429) {
+        setDupMsg('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
       if (data.date !== game.date) {
         onDateMismatch();
