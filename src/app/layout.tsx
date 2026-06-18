@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "헤아리",
-  description: "초성으로 단어를 맞춰보세요!",
+  description: "초성으로 단어를 헤아리기",
 };
 
 export const viewport: Viewport = {

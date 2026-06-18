@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "헤아리",
     short_name: "헤아리",
-    description: "초성으로 단어를 맞춰보세요!",
+    description: "초성으로 단어를 헤아리기",
     start_url: "/",
     display: "standalone",
     background_color: "#fafafa",
