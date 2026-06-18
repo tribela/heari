@@ -51,6 +51,7 @@ export default function Home() {
   const [hintJamos, setHintJamos] = useState<string[] | null>(null);
   const [hintRevealed, setHintRevealed] = useState<boolean[] | null>(null);
   const [hintCount, setHintCount] = useState(0);
+  const [selectedHint, setSelectedHint] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fediRef = useRef<HTMLInputElement>(null);
 
@@ -212,6 +213,7 @@ export default function Home() {
         localStorage.setItem('heari_streak', JSON.stringify({ current: cur, longest, lastDate: today }));
       }
       setLogs(l => [{ input: val, result: data, attempt: (data.valid ? prevAttempts + 1 : prevAttempts) }, ...l]);
+      if (data.valid && 'hint' in data) setSelectedHint(data.hint);
     } catch { /* ignore */ }
     setLoading(false);
     setInput('');
@@ -242,6 +244,13 @@ export default function Home() {
     setHintCount(c => c + 1);
   }, [hintRevealed, loading]);
 
+  const toggleHintSelection = useCallback((index: number) => {
+    const entry = logs[index];
+    if (!entry.result.valid || !('hint' in entry.result)) return;
+    const hint = (entry.result as { hint: string }).hint;
+    setSelectedHint(prev => prev === hint ? null : hint);
+  }, [logs]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') submit();
   };
@@ -270,12 +279,11 @@ export default function Home() {
 
   const shareLines = () => {
     if (!game) return [];
-    const lastHint = logs.find(e => !e.result.correct && e.result.valid && 'hint' in e.result)?.result as { hint: string } | undefined;
     const lines = [
       `${game.date} 헤아리 "${game.chosung}"`,
     ];
-    if (lastHint) lines.push(lastHint.hint);
-    lines.push(`${attempts}번의 헤아림${hintCount > 0 ? ` (힌트 ${hintCount}회)` : ''}`);
+    if (selectedHint) lines.push(selectedHint);
+    lines.push(`${attempts}번의 헤아림${hintCount > 0 ? ` (도움 ${hintCount}회)` : ''}`);
     lines.push(window.location.origin);
     lines.push('');
     lines.push('#헤아리');
@@ -377,7 +385,16 @@ export default function Home() {
             {streak}일 연속 정답
             {longestStreak > streak && <span className="ml-2 text-green-400">최고 {longestStreak}일</span>}
           </p>
-          <div className="mt-4 flex items-center justify-center gap-1.5">
+          <div className="mt-4">
+            <textarea
+              className="w-full resize-none rounded-lg border border-green-200 bg-white/50 p-3 text-xs text-zinc-600 dark:border-green-800 dark:bg-zinc-900/50 dark:text-zinc-400"
+              value={shareLines().join('\n')}
+              readOnly
+              rows={5}
+              onClick={e => (e.target as HTMLTextAreaElement).select()}
+            />
+          </div>
+          <div className="mt-3 flex items-center justify-center gap-1.5">
             <Share2 className="mr-1 h-5 w-5 text-green-600 dark:text-green-400" />
             <button
               className="rounded-lg bg-green-600 p-2 text-white transition-colors hover:bg-green-500 dark:bg-green-700 dark:hover:bg-green-600"
@@ -405,11 +422,14 @@ export default function Home() {
           {logs.map((entry, i) => (
             <div
               key={i}
-              className={`log-enter rounded-lg border px-4 py-3 text-sm ${
+              className={`log-enter rounded-lg border px-4 py-3 text-sm transition-colors ${
                 entry.result.correct
                   ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400'
-                  : 'border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                  : selectedHint !== null && 'hint' in entry.result && (entry.result as { hint: string }).hint === selectedHint
+                  ? 'cursor-pointer border-green-300 bg-green-50/50 text-zinc-700 dark:border-green-600 dark:bg-green-950/50 dark:text-zinc-300'
+                  : 'cursor-pointer border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700/50'
               }`}
+              onClick={() => entry.result.valid && 'hint' in entry.result && toggleHintSelection(i)}
             >
               <span className="mr-1 text-xs text-zinc-300 dark:text-zinc-600">{entry.attempt ?? (logs.length - i)}.</span>
             <span className="font-medium">{entry.input}</span>
