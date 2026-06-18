@@ -10,7 +10,7 @@ function loadRouteConfig(): Record<string, RateLimitConfig> {
 
   return {
     'GET /api/game':  { max: maxGame,  windowMs },
-    'POST /api/guess': { max: maxGuess, windowMs },
+    'GET /api/guess': { max: maxGuess, windowMs },
     'GET /api/hint':   { max: maxHint,  windowMs },
   };
 }
@@ -53,6 +53,7 @@ export function proxy(request: NextRequest) {
         status: 429,
         headers: {
           'Retry-After': String(Math.ceil(result.retryAfter / 1000)),
+          'Cache-Control': 'no-store',
           'X-RateLimit-Remaining': '0',
           'X-RateLimit-Reset': String(Math.ceil(result.resetAt / 1000)),
         },
