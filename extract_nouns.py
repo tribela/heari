@@ -2,7 +2,7 @@ import re
 import urllib.request
 from collections import Counter
 
-URL = 'https://raw.githubusercontent.com/han-dle/pd-korean-noun-list-for-wordles/main/src/AllNouns.js'
+URL = 'https://raw.githubusercontent.com/han-dle/pd-korean-noun-list-for-wordles/main/src/CommonNouns.js'
 HANGUL = re.compile(r'^[가-힣]+$')
 MIN_LEN = 2
 MAX_LEN = 4
