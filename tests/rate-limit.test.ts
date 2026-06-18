@@ -1,57 +1,57 @@
+import { describe, it, expect } from 'bun:test';
 import { rateLimit } from '../src/lib/rate-limit';
 
 const windowMs = 60000;
 const max = 3;
 
-let failed = 0;
+describe('rateLimit', () => {
+  it('first request allowed', () => {
+    const r = rateLimit('rl-test-1', { max, windowMs });
+    expect(r.allowed).toBe(true);
+    expect(r.remaining).toBe(max - 1);
+    expect(r.retryAfter).toBe(0);
+    expect(r.resetAt).toBeGreaterThan(Date.now());
+  });
 
-function test(desc: string, fn: () => boolean) {
-  const ok = fn();
-  console.log(`${ok ? '✓' : '✗'} ${desc}`);
-  if (!ok) failed++;
-}
+  it('second request allowed, remaining decremented', () => {
+    rateLimit('rl-test-2', { max, windowMs }); // consume 1
+    const r = rateLimit('rl-test-2', { max, windowMs });
+    expect(r.allowed).toBe(true);
+    expect(r.remaining).toBe(max - 2);
+  });
 
-// First request — allowed
-const r1 = rateLimit('test-key-1', { max, windowMs });
-test('first request allowed', () => r1.allowed === true);
-test('remaining = max-1', () => r1.remaining === max - 1);
-test('retryAfter = 0', () => r1.retryAfter === 0);
-test('resetAt in future', () => r1.resetAt > Date.now());
+  it('third request at limit (remaining=0)', () => {
+    rateLimit('rl-test-3', { max, windowMs });
+    rateLimit('rl-test-3', { max, windowMs });
+    const r = rateLimit('rl-test-3', { max, windowMs });
+    expect(r.allowed).toBe(true);
+    expect(r.remaining).toBe(0);
+  });
 
-// Second request — still allowed
-const r2 = rateLimit('test-key-1', { max, windowMs });
-test('second request allowed', () => r2.allowed === true);
-test('remaining decremented', () => r2.remaining === max - 2);
+  it('fourth request blocked', () => {
+    rateLimit('rl-test-4', { max, windowMs });
+    rateLimit('rl-test-4', { max, windowMs });
+    rateLimit('rl-test-4', { max, windowMs });
+    const r = rateLimit('rl-test-4', { max, windowMs });
+    expect(r.allowed).toBe(false);
+    expect(r.remaining).toBe(0);
+    expect(r.retryAfter).toBeGreaterThan(0);
+  });
 
-// Third request — allowed (at limit)
-const r3 = rateLimit('test-key-1', { max, windowMs });
-test('third request allowed (at limit)', () => r3.allowed === true);
-test('remaining = 0', () => r3.remaining === 0);
+  it('different key not affected', () => {
+    const r = rateLimit('rl-test-diff', { max, windowMs });
+    expect(r.allowed).toBe(true);
+  });
 
-// Fourth request — blocked
-const r4 = rateLimit('test-key-1', { max, windowMs });
-test('fourth request blocked', () => r4.allowed === false);
-test('remaining = 0 on block', () => r4.remaining === 0);
-test('retryAfter > 0 on block', () => r4.retryAfter > 0);
-test('resetAt still future', () => r4.resetAt > Date.now());
+  it('window reset after expiry', async () => {
+    const shortWindow = 50;
+    const key = 'rl-test-window';
 
-// Different key — not affected
-const rDiff = rateLimit('test-key-different', { max, windowMs });
-test('different key not affected', () => rDiff.allowed === true);
+    expect(rateLimit(key, { max: 1, windowMs: shortWindow }).allowed).toBe(true);
+    expect(rateLimit(key, { max: 1, windowMs: shortWindow }).allowed).toBe(false);
 
-// Short window — reset test
-const shortWindow = 50; // 50ms
-const r5 = rateLimit('test-key-2', { max: 1, windowMs: shortWindow });
-test('short window: first allowed', () => r5.allowed === true);
+    await new Promise(r => setTimeout(r, shortWindow + 10));
 
-const r6 = rateLimit('test-key-2', { max: 1, windowMs: shortWindow });
-test('short window: second blocked (same window)', () => r6.allowed === false);
-
-// Wait for window to expire, then should be allowed again
-await new Promise(resolve => setTimeout(resolve, shortWindow + 10));
-
-const r7 = rateLimit('test-key-2', { max: 1, windowMs: shortWindow });
-test('short window: allowed after reset', () => r7.allowed === true);
-
-console.log(`\n${failed ? `FAILED ${failed} tests` : `PASS all tests`}`);
-process.exit(failed ? 1 : 0);
+    expect(rateLimit(key, { max: 1, windowMs: shortWindow }).allowed).toBe(true);
+  }, { timeout: 200 });
+});
