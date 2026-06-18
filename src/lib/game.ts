@@ -29,8 +29,11 @@ export function getTodayString(): string {
 }
 
 function selectWord(words: string[], date: string): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const ts = (Date.UTC(y, m - 1, d, 0, 0, 0) - 9 * 3600 * 1000) / 1000;
   let hash = 0;
-  for (const ch of date) {
+  const rev = String(ts).split('').reverse();
+  for (const ch of rev) {
     hash = ((hash << 5) - hash) + ch.charCodeAt(0);
     hash |= 0;
   }
