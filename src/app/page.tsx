@@ -56,6 +56,16 @@ export default function Home() {
   const fediRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    setFediInstance(localStorage.getItem('fedi_instance') ?? '');
+    const s = localStorage.getItem('heari_streak');
+    if (s) {
+      try {
+        const { current, longest } = JSON.parse(s);
+        setStreak(current ?? 0);
+        setLongestStreak(longest ?? 0);
+      } catch { /* ignore */ }
+    }
+
     const stored = localStorage.getItem('heari_state');
     if (stored) {
       try {
@@ -83,15 +93,6 @@ export default function Home() {
     fetch('/api/game')
       .then(r => r.json())
       .then((data: GameData) => setGame(data));
-    setFediInstance(localStorage.getItem('fedi_instance') ?? '');
-    const s = localStorage.getItem('heari_streak');
-    if (s) {
-      try {
-        const { current, longest } = JSON.parse(s);
-        setStreak(current ?? 0);
-        setLongestStreak(longest ?? 0);
-      } catch { /* ignore */ }
-    }
   }, []);
 
   useEffect(() => {
