@@ -19,6 +19,64 @@ export function extractChosung(word: string): string {
   return result;
 }
 
+const JUNGSUNG_JAMO = [
+  'ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ',
+];
+const JONGSUNG_JAMO = [
+  '','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ',
+];
+
+const JUNGSUNG_DECOMP: Record<number, [string, string]> = {
+  9: ['ㅗ', 'ㅏ'],
+  10: ['ㅗ', 'ㅐ'],
+  11: ['ㅗ', 'ㅣ'],
+  15: ['ㅜ', 'ㅓ'],
+  16: ['ㅜ', 'ㅔ'],
+  17: ['ㅜ', 'ㅣ'],
+  19: ['ㅡ', 'ㅣ'],
+};
+
+const JONGSUNG_DECOMP: Record<number, [string, string]> = {};
+
+export function decomposeWord(word: string): { jamos: string[]; initialRevealed: boolean[] } {
+  const jamos: string[] = [];
+  const initialRevealed: boolean[] = [];
+
+  for (const ch of word) {
+    const code = ch.charCodeAt(0) - 0xAC00;
+    if (code < 0 || code >= 11172) continue;
+
+    const lIdx = Math.floor(code / 588);
+    const vIdx = Math.floor((code % 588) / 28);
+    const tIdx = code % 28;
+
+    jamos.push(CHOSUNG[lIdx]);
+    initialRevealed.push(true);
+
+    const vDecomp = JUNGSUNG_DECOMP[vIdx];
+    if (vDecomp) {
+      jamos.push(...vDecomp);
+      initialRevealed.push(false, false);
+    } else {
+      jamos.push(JUNGSUNG_JAMO[vIdx]);
+      initialRevealed.push(false);
+    }
+
+    if (tIdx > 0) {
+      const tDecomp = JONGSUNG_DECOMP[tIdx];
+      if (tDecomp) {
+        jamos.push(...tDecomp);
+        initialRevealed.push(false, false);
+      } else {
+        jamos.push(JONGSUNG_JAMO[tIdx]);
+        initialRevealed.push(false);
+      }
+    }
+  }
+
+  return { jamos, initialRevealed };
+}
+
 export function getTodayString(): string {
   const d = new Date();
   const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);

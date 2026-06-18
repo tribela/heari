@@ -48,6 +48,9 @@ export default function Home() {
   const [showFediInput, setShowFediInput] = useState(false);
   const [streak, setStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
+  const [hintJamos, setHintJamos] = useState<string[] | null>(null);
+  const [hintRevealed, setHintRevealed] = useState<boolean[] | null>(null);
+  const [hintCount, setHintCount] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const fediRef = useRef<HTMLInputElement>(null);
 
@@ -65,6 +68,9 @@ export default function Home() {
                 setAttempts(state.attempts ?? 0);
                 setSolved(state.solved ?? false);
                 setLogs(state.logs ?? []);
+                if (state.hintJamos) setHintJamos(state.hintJamos);
+                if (state.hintRevealed) setHintRevealed(state.hintRevealed);
+                if (state.hintCount) setHintCount(state.hintCount);
               } else {
                 localStorage.removeItem('heari_state');
               }
@@ -99,6 +105,9 @@ export default function Home() {
           setSolved(false);
           setLogs([]);
           setInput('');
+          setHintJamos(null);
+          setHintRevealed(null);
+          setHintCount(0);
           setDupMsg('새로운 날의 문제가 시작되었습니다!');
           localStorage.removeItem('heari_state');
           setTimeout(() => setDupMsg(''), 3000);
@@ -123,8 +132,11 @@ export default function Home() {
       attempts,
       solved,
       logs,
+      hintJamos,
+      hintRevealed,
+      hintCount,
     }));
-  }, [game, attempts, solved, logs]);
+  }, [game, attempts, solved, logs, hintJamos, hintRevealed, hintCount]);
 
   useEffect(() => {
     if (!solved && !loading && inputRef.current) {
@@ -205,6 +217,31 @@ export default function Home() {
     setInput('');
   }, [input, loading, solved, game, attempts, logs]);
 
+  const fetchHint = useCallback(async () => {
+    if (!game || solved || loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/hint');
+      const data = await res.json();
+      setHintJamos(data.jamos);
+      setHintRevealed(data.initialRevealed);
+      setAttempts(a => a + 1);
+      setHintCount(c => c + 1);
+    } catch { /* ignore */ }
+    setLoading(false);
+  }, [game, solved, loading]);
+
+  const revealJamo = useCallback((index: number) => {
+    if (!hintRevealed || hintRevealed[index] || loading) return;
+    setHintRevealed(prev => {
+      const next = [...prev!];
+      next[index] = true;
+      return next;
+    });
+    setAttempts(a => a + 1);
+    setHintCount(c => c + 1);
+  }, [hintRevealed, loading]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') submit();
   };
@@ -238,7 +275,7 @@ export default function Home() {
       `${game.date} 헤아리 "${game.chosung}"`,
     ];
     if (lastHint) lines.push(lastHint.hint);
-    lines.push(`${attempts}번의 헤아림`);
+    lines.push(`${attempts}번의 헤아림${hintCount > 0 ? ` (힌트 ${hintCount}회)` : ''}`);
     lines.push(window.location.origin);
     lines.push('');
     lines.push('#헤아리');
@@ -260,13 +297,37 @@ export default function Home() {
       <p className="mb-1 text-center text-sm text-zinc-500 dark:text-zinc-400">초성을 보고 단어를 맞춰보세요</p>
       <p className="mb-6 text-center text-xs text-zinc-400 dark:text-zinc-500">{game.date}</p>
 
-      <div className="mb-6 text-center">
-        <div className="text-7xl font-bold tracking-widest text-zinc-800 dark:text-zinc-200">
-          {game.chosung.split('').map((c, i) => (
-            <span key={i} className="chosung-char mx-1" style={{ animationDelay: `${i * 0.12}s` }}>{c}</span>
-          ))}
+      {!hintJamos ? (
+        <div className="mb-6 text-center">
+          <div className="text-7xl font-bold tracking-widest text-zinc-800 dark:text-zinc-200">
+            {game.chosung.split('').map((c, i) => (
+              <span key={i} className="chosung-char mx-1" style={{ animationDelay: `${i * 0.12}s` }}>{c}</span>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="mb-6 text-center">
+          <div className="mx-auto flex flex-wrap justify-center gap-2">
+            {hintJamos.map((jamo, i) => (
+              <div
+                key={i}
+                className={`animate-pop-in flex h-12 w-12 items-center justify-center rounded-lg border-2 text-xl font-bold transition-all duration-200 sm:h-14 sm:w-14 sm:text-2xl ${
+                  hintRevealed![i]
+                    ? 'border-zinc-300 bg-white text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200'
+                    : 'cursor-pointer border-dashed border-zinc-300 bg-zinc-50 text-zinc-400 hover:border-zinc-400 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-500 dark:hover:border-zinc-500 dark:hover:bg-zinc-800'
+                }`}
+                onClick={() => !hintRevealed![i] && revealJamo(i)}
+                style={{ animationDelay: `${i * 0.06}s` }}
+              >
+                {hintRevealed![i] ? jamo : '?'}
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
+            ?를 눌러 힌트를 공개하세요 ({hintCount}회 사용)
+          </p>
+        </div>
+      )}
 
       <div className="flex w-full gap-2">
         <div className="relative flex-1">
@@ -283,6 +344,13 @@ export default function Home() {
             <p className="absolute -bottom-5 left-1 text-xs text-orange-500 animate-shake dark:text-orange-400">{dupMsg}</p>
           )}
         </div>
+        <button
+          className="rounded-lg border border-zinc-300 px-3 py-3 text-sm transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-700"
+          onClick={fetchHint}
+          disabled={solved || loading || !!hintJamos}
+        >
+          {!hintJamos ? '힌트' : `${hintCount}회 사용`}
+        </button>
         <button
           className="rounded-lg bg-zinc-800 px-6 py-3 text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-700 dark:hover:bg-zinc-600"
           onClick={submit}
