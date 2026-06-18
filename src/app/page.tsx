@@ -96,37 +96,6 @@ export default function Home() {
 
   useEffect(() => {
     if (!game) return;
-    const checkDate = async () => {
-      try {
-        const res = await fetch('/api/game');
-        const data: GameData = await res.json();
-        if (data.date !== game.date) {
-          setGame(data);
-          setAttempts(0);
-          setSolved(false);
-          setLogs([]);
-          setInput('');
-          setHintJamos(null);
-          setHintRevealed(null);
-          setHintCount(0);
-          setDupMsg('새로운 날의 문제가 시작되었습니다!');
-          localStorage.removeItem('heari_state');
-          setTimeout(() => setDupMsg(''), 3000);
-        }
-      } catch { /* ignore */ }
-    };
-    checkDate();
-    const id = setInterval(checkDate, 30000);
-    const onVis = () => { if (document.visibilityState === 'visible') checkDate(); };
-    document.addEventListener('visibilitychange', onVis);
-    return () => {
-      clearInterval(id);
-      document.removeEventListener('visibilitychange', onVis);
-    };
-  }, [game?.date]);
-
-  useEffect(() => {
-    if (!game) return;
     localStorage.setItem('heari_state', JSON.stringify({
       date: game.date,
       chosung: game.chosung,
@@ -150,6 +119,21 @@ export default function Home() {
       fediRef.current.focus();
     }
   }, [showFediInput]);
+
+  const onDateMismatch = useCallback(() => {
+    setDupMsg('새로운 날의 문제가 시작되었습니다!');
+    setAttempts(0);
+    setSolved(false);
+    setLogs([]);
+    setInput('');
+    setHintJamos(null);
+    setHintRevealed(null);
+    setHintCount(0);
+    setSelectedHint(null);
+    localStorage.removeItem('heari_state');
+    fetch('/api/game').then(r => r.json()).then(d => setGame(d));
+    setTimeout(() => setDupMsg(''), 3000);
+  }, []);
 
   const submit = useCallback(async () => {
     const val = input.trim();
@@ -182,9 +166,8 @@ export default function Home() {
       const data: GuessResult = await res.json();
 
       if (data.date !== game.date) {
-        setDupMsg('날짜가 변경되었습니다. 게임을 새로고침 해주세요.');
-        setInput('');
-        setTimeout(() => setDupMsg(''), 3000);
+        onDateMismatch();
+        setLoading(false);
         return;
       }
 
@@ -225,6 +208,11 @@ export default function Home() {
     try {
       const res = await fetch('/api/hint');
       const data = await res.json();
+      if (data.date !== game.date) {
+        onDateMismatch();
+        setLoading(false);
+        return;
+      }
       setHintJamos(data.jamos);
       setHintRevealed(data.initialRevealed);
       setAttempts(a => a + 1);
