@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Share2, ClipboardCopy, Check } from 'lucide-react';
 import { SiMastodon, SiMisskey } from 'react-icons/si';
+import NotificationBell from '@/components/notification-bell';
 
 type GameData = {
   chosung: string;
@@ -290,7 +291,12 @@ export default function Home() {
   return (
     <>
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-12 animate-fade-in">
-      <h1 className="mb-1 text-center text-3xl font-bold tracking-tight">헤아리</h1>
+      <div className="relative mb-1 flex items-center justify-center">
+        <h1 className="text-center text-3xl font-bold tracking-tight">헤아리</h1>
+        <div className="absolute right-0">
+          <NotificationBell />
+        </div>
+      </div>
       <p className="mb-1 text-center text-sm text-zinc-500 dark:text-zinc-400">초성을 보고 단어를 맞춰보세요</p>
       <p className="mb-6 text-center text-xs text-zinc-400 dark:text-zinc-500">{game.date}</p>
 
