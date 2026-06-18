@@ -84,6 +84,9 @@ export async function cleanOldCache(): Promise<void> {
   d.run(
     `DELETE FROM hint_cache WHERE created_at < datetime('now', '-3 days')`
   );
+  d.run(
+    `DELETE FROM game_state WHERE date < datetime('now', '-3 days')`
+  );
   save();
 }
 
