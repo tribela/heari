@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Share2, ClipboardCopy, Check } from 'lucide-react';
 import { SiMastodon, SiMisskey } from 'react-icons/si';
 import NotificationBell from '@/components/notification-bell';
+import TooltipButton from '@/components/tooltip-button';
 
 type GameData = {
   chosung: string;
@@ -364,13 +365,14 @@ export default function Home() {
             <p className="absolute -bottom-5 left-1 text-xs text-orange-500 animate-shake dark:text-orange-400">{dupMsg}</p>
           )}
         </div>
-        <button
+        <TooltipButton
+          tooltip="단어의 자모를 분리하여 보여줍니다. 각 칸을 눌러 하나씩 알아낼 수 있어요"
           className="rounded-lg border border-zinc-300 px-3 py-3 text-sm transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-700"
           onClick={fetchHint}
           disabled={solved || loading || !!hintJamos}
         >
           {!hintJamos ? '힌트' : `${hintCount}회 사용`}
-        </button>
+        </TooltipButton>
         <button
           className="rounded-lg bg-zinc-800 px-6 py-3 text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-700 dark:hover:bg-zinc-600"
           onClick={submit}
@@ -408,23 +410,23 @@ export default function Home() {
           </div>
           <div className="mt-3 flex items-center justify-center gap-1.5">
             <Share2 className="mr-1 h-5 w-5 text-green-600 dark:text-green-400" />
-            <button
+            <TooltipButton
+              tooltip="클립보드에 복사"
               className="rounded-lg bg-green-600 p-2 text-white transition-colors hover:bg-green-500 dark:bg-green-700 dark:hover:bg-green-600"
               onClick={share}
-              title="클립보드에 복사"
             >
               {copied ? <Check className="h-5 w-5" /> : <ClipboardCopy className="h-5 w-5" />}
-            </button>
-            <button
+            </TooltipButton>
+            <TooltipButton
+              tooltip="마스토돈/미스키로 공유"
               className="rounded-lg bg-green-600 p-2 text-white transition-colors hover:bg-green-500 dark:bg-green-700 dark:hover:bg-green-600"
               onClick={shareFedi}
-              title="마스토돈/미스키로 공유"
             >
               <span className="flex items-center gap-1.5">
                 <SiMastodon className="h-5 w-5" />
                 <SiMisskey className="h-5 w-5" />
               </span>
-            </button>
+            </TooltipButton>
           </div>
         </div>
       )}
