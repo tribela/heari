@@ -1,7 +1,12 @@
 self.addEventListener("install", () => self.skipWaiting());
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      await self.clients.claim();
+      await runCycle();
+    })()
+  );
 });
 
 const CACHE_NAME = "heari-v1";
@@ -17,11 +22,19 @@ async function savePrefs(prefs) {
   await cache.put("/notifications", new Response(JSON.stringify(prefs)));
 }
 
-async function checkNewGame() {
+function msUntilKSTMidnight() {
+  const now = Date.now();
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const kstNow = now + kstOffset;
+  const nextMidnight = (Math.floor(kstNow / 86400000) + 1) * 86400000;
+  return nextMidnight - kstNow;
+}
+
+async function checkNewGame(force = false) {
   try {
     const prefs = await getPrefs();
-    if (!prefs.enabled) return;
-    if (Date.now() - (prefs.lastCheck || 0) < 6 * 60 * 60 * 1000) return;
+    if (!prefs.enabled) return false;
+    if (!force && Date.now() - (prefs.lastCheck || 0) < 10 * 60 * 1000) return false;
 
     prefs.lastCheck = Date.now();
     await savePrefs(prefs);
@@ -38,10 +51,22 @@ async function checkNewGame() {
         icon: "/pwa-icon?size=192",
         tag: "new-game",
       });
+      return true;
     }
+    return false;
   } catch {
-    /* silent — network/cache/permission error */
+    return false;
   }
+}
+
+async function runCycle() {
+  const prefs = await getPrefs();
+  if (!prefs.enabled) {
+    setTimeout(runCycle, msUntilKSTMidnight());
+    return;
+  }
+  const sent = await checkNewGame(true);
+  setTimeout(runCycle, sent ? msUntilKSTMidnight() : 5 * 60 * 1000);
 }
 
 self.addEventListener("periodicsync", (event) => {

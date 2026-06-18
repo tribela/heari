@@ -20,11 +20,28 @@ export default function NotificationBell() {
 
   const syncPreference = useCallback((val: boolean) => {
     localStorage.setItem("notifications_enabled", String(val));
-    navigator.serviceWorker.ready.then((reg) => {
+    navigator.serviceWorker.ready.then(async (reg) => {
       reg.active?.postMessage({
         type: "set-notifications",
         enabled: val,
       });
+
+      // 알림 on/off에 따라 Periodic Sync 등록/해제
+      try {
+        const ps = (reg as any).periodicSync as
+          | { getTags(): Promise<string[]>; register(tag: string, opts: { minInterval: number }): Promise<undefined>; unregister(tag: string): Promise<undefined> }
+          | undefined;
+        if (ps) {
+          if (val) {
+            const tags = await ps.getTags();
+            if (!tags.includes("new-game-check")) {
+              await ps.register("new-game-check", { minInterval: 60 * 60 * 1000 });
+            }
+          } else {
+            await ps.unregister("new-game-check");
+          }
+        }
+      } catch { /* not supported */ }
     });
   }, []);
 
