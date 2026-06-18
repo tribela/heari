@@ -11,22 +11,9 @@ export default function NotificationBell() {
     if (typeof Notification === "undefined") return;
 
     const stored = localStorage.getItem("notifications_enabled");
-    let val: boolean;
-    if (stored !== null) {
-      val = stored === "true";
-    } else {
-      val = Notification.permission === "granted";
-      localStorage.setItem("notifications_enabled", String(val));
-    }
+    const val = stored !== null ? stored === "true" : Notification.permission === "granted";
     setEnabled(val);
     setReady(true);
-
-    navigator.serviceWorker.ready.then((reg) => {
-      reg.active?.postMessage({
-        type: "set-notifications",
-        enabled: val,
-      });
-    });
   }, []);
 
   const syncPreference = useCallback((val: boolean) => {

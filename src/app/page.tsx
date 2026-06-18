@@ -53,6 +53,8 @@ export default function Home() {
   const [hintRevealed, setHintRevealed] = useState<boolean[] | null>(null);
   const [hintCount, setHintCount] = useState(0);
   const [selectedHint, setSelectedHint] = useState<string | null>(null);
+  const [notifKey, setNotifKey] = useState(0);
+  const justSolved = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fediRef = useRef<HTMLInputElement>(null);
 
@@ -117,6 +119,20 @@ export default function Home() {
   }, [solved, loading]);
 
   useEffect(() => {
+    if (!solved || !justSolved.current) return;
+    justSolved.current = false;
+    if (typeof Notification === "undefined") return;
+    if (localStorage.getItem("notifications_enabled") !== null) return;
+
+    Notification.requestPermission().then((result) => {
+      const enabled = result === "granted";
+      localStorage.setItem("notifications_enabled", String(enabled));
+      navigator.serviceWorker.controller?.postMessage({ type: "set-notifications", enabled });
+      setNotifKey((k) => k + 1);
+    });
+  }, [solved]);
+
+  useEffect(() => {
     if (showFediInput && fediRef.current) {
       fediRef.current.focus();
     }
@@ -177,6 +193,7 @@ export default function Home() {
         setAttempts(prevAttempts + 1);
       }
       if (data.correct) {
+        justSolved.current = true;
         setSolved(true);
         const today = game.date;
         const parts = today.split('-').map(Number);
@@ -294,7 +311,7 @@ export default function Home() {
       <div className="relative mb-1 flex items-center justify-center">
         <h1 className="text-center text-3xl font-bold tracking-tight">헤아리</h1>
         <div className="absolute right-0">
-          <NotificationBell />
+          <NotificationBell key={notifKey} />
         </div>
       </div>
       <p className="mb-1 text-center text-sm text-zinc-500 dark:text-zinc-400">초성을 보고 단어를 맞춰보세요</p>
