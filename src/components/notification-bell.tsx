@@ -1,11 +1,13 @@
 "use client";
 
 import { Bell, BellOff } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function NotificationBell() {
   const [enabled, setEnabled] = useState(true);
   const [ready, setReady] = useState(false);
+  const [tooltip, setTooltip] = useState(false);
+  const longPress = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (typeof Notification === "undefined") return;
@@ -52,30 +54,45 @@ export default function NotificationBell() {
     syncPreference(newVal);
   }, [ready, enabled, syncPreference]);
 
+  const showTooltip = () => setTooltip(true);
+  const hideTooltip = () => { clearTimeout(longPress.current); setTooltip(false); };
+  const startLongPress = () => { longPress.current = setTimeout(() => setTooltip(true), 500); };
+
   if (typeof Notification === "undefined" || !ready) return null;
 
   const isDenied = Notification.permission === "denied";
 
+  const tooltipText = isDenied
+    ? "알림이 차단됨 (브라우저 설정에서 해제 필요)"
+    : enabled
+      ? "알림 켜짐 — 클릭하여 끄기"
+      : "알림 꺼짐 — 클릭하여 켜기";
+
   return (
-    <button
-      onClick={toggle}
-      title={
-        isDenied
-          ? "알림이 차단됨 (브라우저 설정에서 해제 필요)"
-          : enabled
-            ? "알림 켜짐 — 클릭하여 끄기"
-            : "알림 꺼짐 — 클릭하여 켜기"
-      }
-      className={`rounded-lg p-2 transition-colors ${
-        enabled
-          ? "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
-          : isDenied
-            ? "text-red-300 hover:bg-zinc-100 dark:text-red-400 dark:hover:bg-zinc-800"
-            : "text-zinc-300 hover:bg-zinc-100 dark:text-zinc-600 dark:hover:bg-zinc-800"
-      }`}
-      aria-label={enabled ? "알림 켜짐" : "알림 꺼짐"}
-    >
-      {enabled ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
-    </button>
+    <div className="relative">
+      <button
+        onClick={toggle}
+        onTouchStart={startLongPress}
+        onTouchEnd={hideTooltip}
+        onTouchMove={hideTooltip}
+        onMouseEnter={showTooltip}
+        onMouseLeave={hideTooltip}
+        className={`rounded-lg p-2 transition-colors ${
+          enabled
+            ? "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+            : isDenied
+              ? "text-red-300 hover:bg-zinc-100 dark:text-red-400 dark:hover:bg-zinc-800"
+              : "text-zinc-300 hover:bg-zinc-100 dark:text-zinc-600 dark:hover:bg-zinc-800"
+        }`}
+        aria-label={enabled ? "알림 켜짐" : "알림 꺼짐"}
+      >
+        {enabled ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
+      </button>
+      {tooltip && (
+        <div className="absolute right-0 top-full mt-1 z-50 whitespace-nowrap rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 shadow-lg dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+          {tooltipText}
+        </div>
+      )}
+    </div>
   );
 }
