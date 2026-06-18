@@ -253,11 +253,12 @@ export default function Home() {
   }, [hintRevealed, loading]);
 
   const toggleHintSelection = useCallback((index: number) => {
+    if (!solved) return;
     const entry = logs[index];
     if (!entry.result.valid || !('hint' in entry.result)) return;
     const hint = (entry.result as { hint: string }).hint;
     setSelectedHint(prev => prev === hint ? null : hint);
-  }, [logs]);
+  }, [logs, solved]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') submit();
@@ -443,7 +444,7 @@ export default function Home() {
                   ? 'cursor-pointer border-green-300 bg-green-50/50 text-zinc-700 dark:border-green-600 dark:bg-green-950/50 dark:text-zinc-300'
                   : 'cursor-pointer border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700/50'
               }`}
-              onClick={() => entry.result.valid && 'hint' in entry.result && toggleHintSelection(i)}
+              onClick={() => solved && entry.result.valid && 'hint' in entry.result && toggleHintSelection(i)}
             >
               <span className="mr-1 text-xs text-zinc-300 dark:text-zinc-600">{entry.attempt ?? (logs.length - i)}.</span>
             <span className="font-medium">{entry.input}</span>
