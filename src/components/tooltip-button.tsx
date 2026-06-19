@@ -14,6 +14,7 @@ type Props = {
 export default function TooltipButton({ onClick, tooltip, className, children, ariaLabel, disabled }: Props) {
   const [show, setShow] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const lastTouchEnd = useRef(0);
 
   return (
     <div className="relative inline-flex">
@@ -21,9 +22,9 @@ export default function TooltipButton({ onClick, tooltip, className, children, a
         onClick={onClick}
         disabled={disabled}
         onTouchStart={() => { if (!disabled) timer.current = setTimeout(() => setShow(true), 500); }}
-        onTouchEnd={() => { clearTimeout(timer.current); setShow(false); }}
+        onTouchEnd={() => { clearTimeout(timer.current); setShow(false); lastTouchEnd.current = Date.now(); }}
         onTouchMove={() => { clearTimeout(timer.current); setShow(false); }}
-        onMouseEnter={() => { if (!disabled) setShow(true); }}
+        onMouseEnter={() => { if (!disabled && Date.now() - lastTouchEnd.current > 300) setShow(true); }}
         onMouseLeave={() => setShow(false)}
         className={className}
         aria-label={ariaLabel}

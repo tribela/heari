@@ -8,6 +8,7 @@ export default function NotificationBell() {
   const [ready, setReady] = useState(false);
   const [tooltip, setTooltip] = useState(false);
   const longPress = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const lastTouchEnd = useRef(0);
 
   useEffect(() => {
     if (typeof Notification === "undefined") return;
@@ -71,8 +72,10 @@ export default function NotificationBell() {
     syncPreference(newVal);
   }, [ready, enabled, syncPreference]);
 
-  const showTooltip = () => setTooltip(true);
-  const hideTooltip = () => { clearTimeout(longPress.current); setTooltip(false); };
+  const showTooltip = () => {
+    if (Date.now() - lastTouchEnd.current > 300) setTooltip(true);
+  };
+  const hideTooltip = () => { clearTimeout(longPress.current); setTooltip(false); lastTouchEnd.current = Date.now(); };
   const startLongPress = () => { longPress.current = setTimeout(() => setTooltip(true), 500); };
 
   if (typeof Notification === "undefined" || !ready) return null;
