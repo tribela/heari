@@ -63,7 +63,8 @@ B) "'${input}'처럼 [추상적 공통점/여운]이 있다"
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`OpenRouter API error: ${res.status} ${body}`);
+    console.error(`OpenRouter API error: ${res.status}`, body);
+    throw new Error(`OpenRouter API error: ${res.status}`);
   }
 
   const data = await res.json() as { choices: { message: { content: string } }[] };

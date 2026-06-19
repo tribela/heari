@@ -2,6 +2,42 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseCIDR, getClientIP, DEFAULT_TRUSTED_CIDRS, type CIDR } from '@/lib/ip';
 import { rateLimit, type RateLimitConfig } from '@/lib/rate-limit';
 
+function corsOrigin(request: NextRequest): string | null {
+  const origin = request.headers.get('origin');
+  if (!origin) return null;
+  return origin === request.nextUrl.origin ? origin : null;
+}
+
+function corsHeaders(request: NextRequest): Record<string, string> {
+  const origin = corsOrigin(request);
+  return origin
+    ? { 'Access-Control-Allow-Origin': origin, 'Vary': 'Origin' }
+    : {};
+}
+
+function setCORSHeaders(response: NextResponse, request: NextRequest): void {
+  const origin = corsOrigin(request);
+  if (origin) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Vary', 'Origin');
+  }
+}
+
+function handleCORS(request: NextRequest): NextResponse {
+  const origin = corsOrigin(request);
+  if (!origin) return new NextResponse(null, { status: 204 });
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Max-Age': '86400',
+      'Vary': 'Origin',
+    },
+  });
+}
+
 function loadRouteConfig(): Record<string, RateLimitConfig> {
   const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '', 10) || 60000;
   const maxGuess = parseInt(process.env.RATE_LIMIT_MAX_GUESS ?? '', 10) || 10;
@@ -38,7 +74,15 @@ export function proxy(request: NextRequest) {
     return m === method && p === pathname;
   });
 
-  if (!routeConfig) return NextResponse.next();
+  if (method === 'OPTIONS') {
+    return handleCORS(request);
+  }
+
+  if (!routeConfig) {
+    const corsRes = NextResponse.next();
+    setCORSHeaders(corsRes, request);
+    return corsRes;
+  }
 
   const [, rlConfig] = routeConfig;
   const xff = request.headers.get('x-forwarded-for') ?? '';
@@ -56,6 +100,7 @@ export function proxy(request: NextRequest) {
           'Cache-Control': 'no-store',
           'X-RateLimit-Remaining': '0',
           'X-RateLimit-Reset': String(Math.ceil(result.resetAt / 1000)),
+          ...corsHeaders(request),
         },
       },
     );
@@ -64,6 +109,7 @@ export function proxy(request: NextRequest) {
   const response = NextResponse.next();
   response.headers.set('X-RateLimit-Remaining', String(result.remaining));
   response.headers.set('X-RateLimit-Reset', String(Math.ceil(result.resetAt / 1000)));
+  setCORSHeaders(response, request);
   return response;
 }
 
