@@ -58,6 +58,7 @@ export default function Home() {
   const justSolved = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fediRef = useRef<HTMLInputElement>(null);
+  const isActive = !solved && !loading;
 
   useEffect(() => {
     setFediInstance(localStorage.getItem('fedi_instance') ?? '');
@@ -114,7 +115,7 @@ export default function Home() {
   }, [game, attempts, solved, logs, hintJamos, hintRevealed, hintCount]);
 
   useEffect(() => {
-    if (!solved && !loading && inputRef.current) {
+    if (isActive && inputRef.current) {
       inputRef.current.focus();
     }
   }, [solved, loading]);
@@ -156,7 +157,7 @@ export default function Home() {
 
   const submit = useCallback(async () => {
     const val = input.trim();
-    if (!val || loading || solved || !game) return;
+    if (!val || !isActive || !game) return;
 
     if (logs.some(e => e.input === val)) {
       setDupMsg('이미 시도한 단어입니다');
@@ -227,7 +228,7 @@ export default function Home() {
   }, [input, loading, solved, game, attempts, logs]);
 
   const fetchHint = useCallback(async () => {
-    if (!game || solved || loading) return;
+    if (!game || !isActive) return;
     setLoading(true);
     try {
       const res = await fetch('/api/hint');
@@ -251,7 +252,7 @@ export default function Home() {
   }, [game, solved, loading]);
 
   const revealJamo = useCallback((index: number) => {
-    if (!hintRevealed || hintRevealed[index] || loading) return;
+    if (!hintRevealed || hintRevealed[index] || !isActive) return;
     setHintRevealed(prev => {
       const next = [...prev!];
       next[index] = true;
@@ -369,7 +370,7 @@ export default function Home() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="정답 입력"
-            disabled={solved || loading}
+            disabled={!isActive}
           />
           {dupMsg && (
             <p className="absolute -bottom-5 left-1 text-xs text-orange-500 animate-shake dark:text-orange-400">{dupMsg}</p>
@@ -379,14 +380,14 @@ export default function Home() {
           tooltip="단어의 자모를 분리하여 보여줍니다. 각 칸을 눌러 하나씩 알아낼 수 있어요"
           className="rounded-lg border border-zinc-300 px-3 py-3 text-sm transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-700"
           onClick={fetchHint}
-          disabled={solved || loading || !!hintJamos}
+          disabled={!isActive || !!hintJamos}
         >
           {!hintJamos ? '힌트' : `${hintCount}회 사용`}
         </TooltipButton>
         <button
           className="rounded-lg bg-zinc-800 px-6 py-3 text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-700 dark:hover:bg-zinc-600"
           onClick={submit}
-          disabled={solved || loading || !input.trim()}
+          disabled={!isActive || !input.trim()}
         >
           확인
         </button>
