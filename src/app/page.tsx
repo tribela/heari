@@ -155,6 +155,15 @@ export default function Home() {
     setTimeout(() => setDupMsg(''), 3000);
   }, []);
 
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'new-game') onDateMismatch();
+    };
+    navigator.serviceWorker.addEventListener('message', handler);
+    return () => navigator.serviceWorker.removeEventListener('message', handler);
+  }, [onDateMismatch]);
+
   const submit = useCallback(async () => {
     const val = input.trim();
     if (!val || !isActive || !game) return;

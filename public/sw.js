@@ -51,6 +51,11 @@ async function checkNewGame(force = false) {
         icon: "/pwa-icon?size=192",
         tag: "new-game",
       });
+
+      const clients = await self.clients.matchAll({ type: "window" });
+      for (const client of clients) {
+        client.postMessage({ type: "new-game", date: data.date, chosung: data.chosung });
+      }
       return true;
     }
     return false;
