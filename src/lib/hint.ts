@@ -2,6 +2,21 @@ import { getCachedHint, setCachedHint, cleanOldCache } from './db';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY ?? '';
 const MODEL = process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini';
+const MAX_RETRIES = 3;
+
+function stripQuotes(s: string): string {
+  const quotes = ['"', "'", '「', '」', '『', '』'];
+  for (const q of quotes) {
+    if (s.startsWith(q) && s.endsWith(q)) {
+      return s.slice(q.length, -q.length).trim();
+    }
+  }
+  return s;
+}
+
+function containsAnswer(hint: string, answer: string): boolean {
+  return answer.length > 0 && hint.includes(answer);
+}
 
 export async function getHint(input: string, answer: string): Promise<string> {
   await cleanOldCache();
@@ -9,7 +24,14 @@ export async function getHint(input: string, answer: string): Promise<string> {
   const cached = await getCachedHint(input, answer);
   if (cached) return cached;
 
-  const hint = await callOpenRouter(input, answer);
+  let hint = await callOpenRouter(input, answer);
+  hint = stripQuotes(hint);
+
+  for (let i = 0; i < MAX_RETRIES && containsAnswer(hint, answer); i++) {
+    hint = await callOpenRouter(input, answer);
+    hint = stripQuotes(hint);
+  }
+
   await setCachedHint(input, answer, hint);
   return hint;
 }
