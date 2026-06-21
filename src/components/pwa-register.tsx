@@ -69,9 +69,18 @@ export default function PwaRegister() {
       navigator.serviceWorker.controller?.postMessage({ type: "check-now" });
     }, 300000);
 
+    // 백그라운드→포그라운드 복귀 시 체크 (PWA resume)
+    const visibilityHandler = () => {
+      if (document.visibilityState === "visible") {
+        navigator.serviceWorker.controller?.postMessage({ type: "check-now" });
+      }
+    };
+    document.addEventListener("visibilitychange", visibilityHandler);
+
     return () => {
       clearTimeout(midnightTimer.current);
       clearInterval(fallbackTimer);
+      document.removeEventListener("visibilitychange", visibilityHandler);
     };
   }, []);
 

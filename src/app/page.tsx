@@ -56,6 +56,7 @@ export default function Home() {
   const [selectedHint, setSelectedHint] = useState<string | null>(null);
   const [notifKey, setNotifKey] = useState(0);
   const justSolved = useRef(false);
+  const gameRef = useRef<GameData | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fediRef = useRef<HTMLInputElement>(null);
   const isActive = !solved && !loading;
@@ -114,6 +115,8 @@ export default function Home() {
     }));
   }, [game, attempts, solved, logs, hintJamos, hintRevealed, hintCount]);
 
+  useEffect(() => { gameRef.current = game; }, [game]);
+
   useEffect(() => {
     if (isActive && inputRef.current) {
       inputRef.current.focus();
@@ -158,10 +161,31 @@ export default function Home() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
     const handler = (event: MessageEvent) => {
-      if (event.data?.type === 'new-game') onDateMismatch();
+      if (event.data?.type === 'new-game') {
+        if (gameRef.current && event.data.date === gameRef.current.date) return;
+        onDateMismatch();
+      }
     };
     navigator.serviceWorker.addEventListener('message', handler);
     return () => navigator.serviceWorker.removeEventListener('message', handler);
+  }, [onDateMismatch]);
+
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState !== 'visible' || !gameRef.current) return;
+      const now = Date.now();
+      const kstOffset = 9 * 60 * 60 * 1000;
+      const kstNow = now + kstOffset;
+      const kstDate = new Date(kstNow).toISOString().slice(0, 10);
+      if (kstDate === gameRef.current.date) return;
+      fetch('/api/game').then(r => r.json()).then((data: GameData) => {
+        if (data.date !== gameRef.current?.date) {
+          onDateMismatch();
+        }
+      });
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
   }, [onDateMismatch]);
 
   const submit = useCallback(async () => {

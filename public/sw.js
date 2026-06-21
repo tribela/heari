@@ -30,7 +30,11 @@ function msUntilKSTMidnight() {
   return nextMidnight - kstNow;
 }
 
+let _checking = false;
+
 async function checkNewGame(force = false) {
+  if (_checking) return false;
+  _checking = true;
   try {
     const prefs = await getPrefs();
     if (!prefs.enabled) return false;
@@ -61,6 +65,8 @@ async function checkNewGame(force = false) {
     return false;
   } catch {
     return false;
+  } finally {
+    _checking = false;
   }
 }
 
