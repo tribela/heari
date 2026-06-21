@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "bun test"
+    "test": "bun test",
+    "generate-vapid-keys": "node -e \"const w=require('web-push');const k=w.generateVAPIDKeys();console.log('VAPID_PUBLIC_KEY='+k.publicKey);console.log('VAPID_PRIVATE_KEY='+k.privateKey);console.log('# VAPID_SUBJECT=https://your-domain.com/  ← 도메인에 맞게 수정')\""
   },
   "dependencies": {
     "lucide-react": "^1.21.0",
@@ -15,7 +16,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-icons": "^5.6.0",
-    "sql.js": "^1.14.1"
+    "sql.js": "^1.14.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.1",
@@ -24,6 +26,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@types/sql.js": "^1.4.11",
+    "@types/web-push": "^3.6.4",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.2.9",
     "sass": "^1.101.0",

@@ -3,74 +3,125 @@
 import { Bell, BellOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from(rawData.split("").map((c) => c.charCodeAt(0)));
+}
+
 export default function NotificationBell() {
-  const [enabled, setEnabled] = useState(true);
-  const [ready, setReady] = useState(false);
+  const [enabled, setEnabled] = useState(() => {
+    if (typeof Notification === "undefined") return true;
+    const stored = localStorage.getItem("notifications_enabled");
+    return stored !== null ? stored === "true" : Notification.permission === "granted";
+  });
   const [tooltip, setTooltip] = useState(false);
   const longPress = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastTouchEnd = useRef(0);
+  const subDone = useRef(false);
 
-  useEffect(() => {
-    if (typeof Notification === "undefined") return;
-
-    const stored = localStorage.getItem("notifications_enabled");
-    const val = stored !== null ? stored === "true" : Notification.permission === "granted";
-    setEnabled(val);
-    setReady(true);
+  const getReg = useCallback(async () => {
+    if (!("serviceWorker" in navigator)) return null;
+    try {
+      return await navigator.serviceWorker.ready;
+    } catch {
+      return null;
+    }
   }, []);
 
-  const syncPreference = useCallback((val: boolean) => {
-    localStorage.setItem("notifications_enabled", String(val));
-    navigator.serviceWorker.ready.then(async (reg) => {
-      reg.active?.postMessage({
-        type: "set-notifications",
-        enabled: val,
+  const subscribePush = useCallback(async (reg: ServiceWorkerRegistration) => {
+    try {
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) return existing;
+
+      const res = await fetch("/api/push/vapid-key");
+      const { publicKey } = await res.json();
+      if (!publicKey) return null;
+
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey) as unknown as BufferSource,
       });
 
-      // 알림 on/off에 따라 Periodic Sync 등록/해제
-      try {
-        const ps = (reg as any).periodicSync as
-          | { getTags(): Promise<string[]>; register(tag: string, opts: { minInterval: number }): Promise<undefined>; unregister(tag: string): Promise<undefined> }
-          | undefined;
-        if (ps) {
-          if (val) {
-            const tags = await ps.getTags();
-            if (!tags.includes("new-game-check")) {
-              await ps.register("new-game-check", { minInterval: 60 * 60 * 1000 });
-            }
-          } else {
-            await ps.unregister("new-game-check");
-          }
-        }
-      } catch { /* not supported */ }
-    });
+      const json = sub.toJSON();
+      await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          endpoint: json.endpoint,
+          p256dh: json.keys?.p256dh,
+          auth: json.keys?.auth,
+        }),
+      });
+
+      return sub;
+    } catch {
+      return null;
+    }
   }, []);
 
+  const unsubscribePush = useCallback(async (reg: ServiceWorkerRegistration) => {
+    try {
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub) return;
+      const json = sub.toJSON();
+      await sub.unsubscribe();
+      await fetch("/api/push/subscribe", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: json.endpoint }),
+      });
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    if (typeof Notification === "undefined" || subDone.current) return;
+    subDone.current = true;
+
+    if (enabled && Notification.permission === "granted") {
+      getReg().then((reg) => {
+        if (reg) subscribePush(reg);
+      });
+    }
+  }, [enabled, getReg, subscribePush]);
+
   const toggle = useCallback(async () => {
-    if (typeof Notification === "undefined" || !ready) return;
+    if (typeof Notification === "undefined") return;
 
     if (Notification.permission === "default") {
       const result = await Notification.requestPermission();
       if (result === "denied") {
         setEnabled(false);
-        syncPreference(false);
+        localStorage.setItem("notifications_enabled", "false");
         return;
       }
       setEnabled(true);
-      syncPreference(true);
+      localStorage.setItem("notifications_enabled", "true");
+      const reg = await getReg();
+      if (reg) await subscribePush(reg);
       return;
     }
 
     if (Notification.permission === "denied") {
       setEnabled(false);
-      syncPreference(false);
+      localStorage.setItem("notifications_enabled", "false");
       return;
     }
 
-    const newVal = !enabled;
-    setEnabled(newVal);
-    syncPreference(newVal);
-  }, [ready, enabled, syncPreference]);
+    const reg = await getReg();
+    if (!reg) return;
+
+    if (enabled) {
+      await unsubscribePush(reg);
+      setEnabled(false);
+      localStorage.setItem("notifications_enabled", "false");
+    } else {
+      setEnabled(true);
+      localStorage.setItem("notifications_enabled", "true");
+      await subscribePush(reg);
+    }
+  }, [enabled, getReg, subscribePush, unsubscribePush]);
 
   const showTooltip = () => {
     if (Date.now() - lastTouchEnd.current > 300) setTooltip(true);
@@ -78,7 +129,7 @@ export default function NotificationBell() {
   const hideTooltip = () => { clearTimeout(longPress.current); setTooltip(false); lastTouchEnd.current = Date.now(); };
   const startLongPress = () => { longPress.current = setTimeout(() => setTooltip(true), 500); };
 
-  if (typeof Notification === "undefined" || !ready) return null;
+  if (typeof Notification === "undefined") return null;
 
   const isDenied = Notification.permission === "denied";
 

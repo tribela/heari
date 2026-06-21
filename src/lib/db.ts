@@ -42,6 +42,13 @@ async function ensureDb(): Promise<SqlJsDatabase> {
       word TEXT NOT NULL
     )`);
 
+    db.run(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+      endpoint TEXT PRIMARY KEY,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`);
+
     save();
   })();
   await initPromise;
@@ -112,4 +119,30 @@ export async function setWordForDate(date: string, word: string): Promise<void> 
     [date, word]
   );
   save();
+}
+
+export async function addPushSubscription(endpoint: string, p256dh: string, auth: string): Promise<void> {
+  const d = await ensureDb();
+  d.run(
+    `INSERT OR REPLACE INTO push_subscriptions (endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, datetime('now'))`,
+    [endpoint, p256dh, auth]
+  );
+  save();
+}
+
+export async function removePushSubscription(endpoint: string): Promise<void> {
+  const d = await ensureDb();
+  d.run(`DELETE FROM push_subscriptions WHERE endpoint = ?`, [endpoint]);
+  save();
+}
+
+export async function getAllPushSubscriptions(): Promise<{ endpoint: string; p256dh: string; auth: string }[]> {
+  const d = await ensureDb();
+  const stmt = d.prepare(`SELECT endpoint, p256dh, auth FROM push_subscriptions`);
+  const rows: { endpoint: string; p256dh: string; auth: string }[] = [];
+  while (stmt.step()) {
+    rows.push(stmt.getAsObject() as { endpoint: string; p256dh: string; auth: string });
+  }
+  stmt.free();
+  return rows;
 }
