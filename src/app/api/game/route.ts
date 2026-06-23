@@ -3,7 +3,7 @@ import { getDailyWord, getTodayString } from '@/lib/game';
 import { getWordForDate } from '@/lib/db';
 import { sendPushToAll } from '@/lib/push';
 
-const CACHE_SWR = { headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400, stale-if-error=86400' } };
+const CACHE_CONTROL = { headers: { 'Cache-Control': 'public, max-age=300, must-revalidate' } };
 
 export async function GET() {
   const today = getTodayString();
@@ -11,7 +11,7 @@ export async function GET() {
   const { chosung } = await getDailyWord();
 
   if (!existing) {
-    sendPushToAll(JSON.stringify({
+    await sendPushToAll(JSON.stringify({
       title: '헤아리',
       body: `오늘의 헤아리기: ${chosung}`,
       date: today,
@@ -19,5 +19,5 @@ export async function GET() {
     }));
   }
 
-  return NextResponse.json({ chosung, date: today }, CACHE_SWR);
+  return NextResponse.json({ chosung, date: today }, CACHE_CONTROL);
 }
