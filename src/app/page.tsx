@@ -222,7 +222,7 @@ export default function Home() {
 
       const data: GuessResult = await res.json();
 
-      if (data.date !== game.date) {
+      if (data.date !== gameRef.current?.date) {
         onDateMismatch();
         setLoading(false);
         return;
@@ -271,7 +271,7 @@ export default function Home() {
         return;
       }
       const data = await res.json();
-      if (data.date !== game.date) {
+      if (data.date !== gameRef.current?.date) {
         onDateMismatch();
         setLoading(false);
         return;
