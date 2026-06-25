@@ -86,6 +86,20 @@ export async function setCachedHint(input: string, answer: string, hint: string)
   save();
 }
 
+export async function getRecentHints(answer: string, limit: number = 20): Promise<{ input: string; hint: string }[]> {
+  const d = await ensureDb();
+  const stmt = d.prepare(
+    `SELECT input, hint FROM hint_cache WHERE answer = ? ORDER BY created_at DESC LIMIT ?`
+  );
+  stmt.bind([answer, limit]);
+  const rows: { input: string; hint: string }[] = [];
+  while (stmt.step()) {
+    rows.push(stmt.getAsObject() as { input: string; hint: string });
+  }
+  stmt.free();
+  return rows;
+}
+
 export async function cleanOldCache(): Promise<void> {
   const d = await ensureDb();
   d.run(
