@@ -372,19 +372,40 @@ export default function Home() {
         </div>
       ) : (
         <div className="mb-6 text-center">
-          <div className="mx-auto flex flex-wrap justify-center gap-2">
-            {hintJamos.map((jamo, i) => (
-              <div
-                key={i}
-                className={`animate-pop-in flex h-12 w-12 items-center justify-center rounded-lg border-2 text-xl font-bold transition-all duration-200 sm:h-14 sm:w-14 sm:text-2xl ${
-                  hintRevealed![i]
-                    ? 'border-zinc-300 bg-white text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200'
-                    : 'cursor-pointer border-dashed border-zinc-300 bg-zinc-50 text-zinc-400 hover:border-zinc-400 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-500 dark:hover:border-zinc-500 dark:hover:bg-zinc-800'
-                }`}
-                onClick={() => !hintRevealed![i] && revealJamo(i)}
-                style={{ animationDelay: `${i * 0.06}s` }}
-              >
-                {hintRevealed![i] ? jamo : '?'}
+          <div className="mx-auto flex flex-wrap justify-center gap-x-2 gap-y-2">
+            {(() => {
+              const groups: { jamos: string[]; revealed: boolean[]; start: number }[] = [];
+              let cur: typeof groups[number] | null = null;
+              for (let i = 0; i < hintJamos.length; i++) {
+                if (hintRevealed![i]) {
+                  if (cur) groups.push(cur);
+                  cur = { jamos: [hintJamos[i]], revealed: [hintRevealed![i]], start: i };
+                } else if (cur) {
+                  cur.jamos.push(hintJamos[i]);
+                  cur.revealed.push(hintRevealed![i]);
+                }
+              }
+              if (cur) groups.push(cur);
+              return groups;
+            })().map((group, gi) => (
+              <div key={gi} className="flex gap-1">
+                {group.jamos.map((jamo, ji) => {
+                  const flatIdx = group.start + ji;
+                  return (
+                    <div
+                      key={ji}
+                      className={`animate-pop-in flex h-12 w-12 items-center justify-center rounded-lg border-2 text-xl font-bold transition-all duration-200 sm:h-14 sm:w-14 sm:text-2xl ${
+                        group.revealed[ji]
+                          ? 'border-zinc-300 bg-white text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200'
+                          : 'cursor-pointer border-dashed border-zinc-300 bg-zinc-50 text-zinc-400 hover:border-zinc-400 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-500 dark:hover:border-zinc-500 dark:hover:bg-zinc-800'
+                      }`}
+                      onClick={() => !group.revealed[ji] && revealJamo(flatIdx)}
+                      style={{ animationDelay: `${flatIdx * 0.06}s` }}
+                    >
+                      {group.revealed[ji] ? jamo : '?'}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
