@@ -52,6 +52,7 @@ export default function Home() {
   const [longestStreak, setLongestStreak] = useState(0);
   const [hintJamos, setHintJamos] = useState<string[] | null>(null);
   const [hintRevealed, setHintRevealed] = useState<boolean[] | null>(null);
+  const [initialJamoRevealed, setInitialJamoRevealed] = useState<boolean[] | null>(null);
   const [hintCount, setHintCount] = useState(0);
   const [selectedHint, setSelectedHint] = useState<string | null>(null);
   const [notifKey, setNotifKey] = useState(0);
@@ -87,6 +88,8 @@ export default function Home() {
                 setLogs(state.logs ?? []);
                 if (state.hintJamos) setHintJamos(state.hintJamos);
                 if (state.hintRevealed) setHintRevealed(state.hintRevealed);
+                if (state.initialJamoRevealed) setInitialJamoRevealed(state.initialJamoRevealed);
+                else if (state.hintRevealed) setInitialJamoRevealed([...state.hintRevealed]);
                 if (state.hintCount) setHintCount(state.hintCount);
               } else {
                 localStorage.removeItem('heari_state');
@@ -111,9 +114,10 @@ export default function Home() {
       logs,
       hintJamos,
       hintRevealed,
+      initialJamoRevealed,
       hintCount,
     }));
-  }, [game, attempts, solved, logs, hintJamos, hintRevealed, hintCount]);
+  }, [game, attempts, solved, logs, hintJamos, hintRevealed, initialJamoRevealed, hintCount]);
 
   useEffect(() => { gameRef.current = game; }, [game]);
 
@@ -151,6 +155,7 @@ export default function Home() {
     setInput('');
     setHintJamos(null);
     setHintRevealed(null);
+    setInitialJamoRevealed(null);
     setHintCount(0);
     setSelectedHint(null);
     localStorage.removeItem('heari_state');
@@ -278,6 +283,7 @@ export default function Home() {
       }
       setHintJamos(data.jamos);
       setHintRevealed(data.initialRevealed);
+      setInitialJamoRevealed(data.initialRevealed);
       setAttempts(a => a + 1);
       setHintCount(c => c + 1);
     } catch { /* ignore */ }
@@ -372,12 +378,12 @@ export default function Home() {
         </div>
       ) : (
         <div className="mb-6 text-center">
-          <div className="mx-auto flex flex-wrap justify-center gap-x-2 gap-y-2">
+          <div className="mx-auto flex flex-wrap justify-center gap-x-6 gap-y-2">
             {(() => {
               const groups: { jamos: string[]; revealed: boolean[]; start: number }[] = [];
               let cur: typeof groups[number] | null = null;
               for (let i = 0; i < hintJamos.length; i++) {
-                if (hintRevealed![i]) {
+                if (initialJamoRevealed![i]) {
                   if (cur) groups.push(cur);
                   cur = { jamos: [hintJamos[i]], revealed: [hintRevealed![i]], start: i };
                 } else if (cur) {
