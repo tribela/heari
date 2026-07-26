@@ -1,0 +1,13 @@
+{
+	"healthchecks": {
+		"web": [
+			{
+				"type": "startup",
+				"name": "api check",
+				"description": "Checks if the API is up and running",
+				"path": "/api/game",
+				"attempts": 3
+			}
+		]
+	}
+}
