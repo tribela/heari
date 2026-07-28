@@ -44,6 +44,9 @@ Browser  ──>  next.config.ts (security headers)
 - Hangul syllable decomposition into jamo
 - Input validation (2+ chars, all Hangul)
 
+### `src/lib/game-types.ts`
+- Shared TypeScript types: `GameData`, `GuessResult`, `LogEntry`
+
 ### `src/lib/hint.ts`
 - **`getHint(input, answer)`**: entry point. Cleans cache, checks cache, calls OpenRouter, caches result.
 - **`callOpenRouter(input, answer)`**: calls OpenRouter chat completions with engineered system prompt. Temperature 0.95, max 60 tokens.
@@ -63,17 +66,29 @@ Edge Middleware. Applies to all requests.
 - Trusted proxy chain traversal (Cloudflare → Vercel → app)
 - Uses `src/lib/ip.ts` and `src/lib/rate-limit.ts`
 
-### `src/app/page.tsx` (513 lines)
-Main game client component.
-- **State**: guesses (history), hintJamos/revealed (visual hint), selectedHint (AI hint from log), streak, session persistence
-- **UI**: chosung display → jamo grid (visual hint) → input → guess log → share buttons
-- **Hint system**: `fetchHint` gets jamo breakdown, `revealJamo` reveals one by one, `toggleHintSelection` shows AI hint in log after solved
-- **Sharing**: clipboard text, Mastodon/Misskey compose URLs
+### `src/app/page.tsx` (169 lines)
+Main game client component. Thin orchestrator — delegates to hooks + UI components.
+- **Hook**: `useGame()` from `src/lib/hooks/use-game.ts` — all game state, side effects, callbacks
+- **UI state only**: `copied`, `fediInstance`, `showFediInput` (share UX)
+- **Render**: composes 7 child components, header, input group, loading indicator
 
-### Components
-- `pwa-register.tsx` — registers SW, sets up periodic sync + midnight timer
-- `notification-bell.tsx` — manages Notification permission, toggle UI
-- `tooltip-button.tsx` — reusable button with hover/touch tooltip
+### Client Components (`src/components/`)
+
+| Component | Role |
+|---|---|
+| `jamo-grid.tsx` | Syllable-grouped clickable jamo tiles |
+| `log-list.tsx` | Attempt log with inline jamo state rendering |
+| `solved-card.tsx` | Solved state + share (clipboard, Mastodon/Misskey) |
+| `fedi-modal.tsx` | Federated instance input dialog |
+| `tooltip-button.tsx` | Reusable button with hover/touch tooltip |
+| `notification-bell.tsx` | Push notification toggle |
+| `pwa-register.tsx` | Service worker registration, periodic sync |
+
+### Custom Hooks (`src/lib/hooks/`)
+
+| Hook | File | Role | Size |
+|------|------|------|------|
+| `useGame` | `use-game.ts` | Game data fetch, date checks, play state, hints, persistence, streak | 310줄 |
 
 ---
 
@@ -118,5 +133,6 @@ Run with `bun test`. Tests are in `tests/`:
 - API routes in `src/app/api/<name>/route.ts`
 - Server code in `src/lib/`
 - Client components in `src/components/`
+- Custom hooks in `src/lib/hooks/`
 - No comments in source code (caveman style preferred)
 - TypeScript strict mode
