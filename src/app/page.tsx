@@ -1,31 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Share2, ClipboardCopy, Check } from 'lucide-react';
-import { SiMastodon, SiMisskey } from 'react-icons/si';
+import type { GameData, GuessResult, LogEntry } from '@/lib/game-types';
 import NotificationBell from '@/components/notification-bell';
+import JamoGrid from '@/components/jamo-grid';
+import LogList from '@/components/log-list';
+import SolvedCard from '@/components/solved-card';
+import FediModal from '@/components/fedi-modal';
 import TooltipButton from '@/components/tooltip-button';
-
-type GameData = {
-  chosung: string;
-  date: string;
-};
-
-type GuessResult =
-  | { correct: true; valid: true; date: string }
-  | { correct: false; valid: false; reason: string; date: string }
-  | { correct: false; valid: true; hint: string; date: string };
-
-type LogEntry = {
-  input: string;
-  result: GuessResult;
-  attempt: number;
-  jamoState?: {
-    jamos: string[];
-    revealed: boolean[];
-    newIndex?: number;
-  };
-};
 
 const CHOSUNG = [
   'ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ',
@@ -64,7 +46,6 @@ export default function Home() {
   const justSolved = useRef(false);
   const gameRef = useRef<GameData | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const fediRef = useRef<HTMLInputElement>(null);
   const isActive = !solved && !loading;
 
   useEffect(() => {
@@ -145,12 +126,6 @@ export default function Home() {
       setNotifKey((k) => k + 1);
     });
   }, [solved]);
-
-  useEffect(() => {
-    if (showFediInput && fediRef.current) {
-      fediRef.current.focus();
-    }
-  }, [showFediInput]);
 
   const onDateMismatch = useCallback(() => {
     setDupMsg('새로운 날의 문제가 시작되었습니다!');
@@ -346,14 +321,12 @@ export default function Home() {
 
   const shareFedi = () => setShowFediInput(true);
 
-  const confirmFediInstance = () => {
-    const val = fediRef.current?.value.trim();
-    if (!val) return;
-    localStorage.setItem('fedi_instance', val);
-    setFediInstance(val);
+  const confirmFediInstance = (instance: string) => {
+    localStorage.setItem('fedi_instance', instance);
+    setFediInstance(instance);
     setShowFediInput(false);
     const lines = shareLines();
-    window.open(`https://${val}/share?text=${encodeURIComponent(lines.join('\n'))}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://${instance}/share?text=${encodeURIComponent(lines.join('\n'))}`, '_blank', 'noopener,noreferrer');
   };
 
   const shareLines = () => {
@@ -398,48 +371,14 @@ export default function Home() {
           </div>
         </div>
       ) : (
-        <div className="mb-6 text-center">
-          <div className="mx-auto flex flex-wrap justify-center gap-x-6 gap-y-2">
-            {(() => {
-              const groups: { jamos: string[]; revealed: boolean[]; start: number }[] = [];
-              let cur: typeof groups[number] | null = null;
-              for (let i = 0; i < hintJamos.length; i++) {
-                if (initialJamoRevealed![i]) {
-                  if (cur) groups.push(cur);
-                  cur = { jamos: [hintJamos[i]], revealed: [hintRevealed![i]], start: i };
-                } else if (cur) {
-                  cur.jamos.push(hintJamos[i]);
-                  cur.revealed.push(hintRevealed![i]);
-                }
-              }
-              if (cur) groups.push(cur);
-              return groups;
-            })().map((group, gi) => (
-              <div key={gi} className="flex gap-1">
-                {group.jamos.map((jamo, ji) => {
-                  const flatIdx = group.start + ji;
-                  return (
-                    <div
-                      key={ji}
-                      className={`animate-pop-in flex h-12 w-12 items-center justify-center rounded-lg border-2 text-xl font-bold transition-all duration-200 sm:h-14 sm:w-14 sm:text-2xl ${
-                        group.revealed[ji]
-                          ? 'border-zinc-300 bg-white text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200'
-                          : 'cursor-pointer border-dashed border-zinc-300 bg-zinc-50 text-zinc-400 hover:border-zinc-400 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-500 dark:hover:border-zinc-500 dark:hover:bg-zinc-800'
-                      }`}
-                      onClick={() => !group.revealed[ji] && revealJamo(flatIdx)}
-                      style={{ animationDelay: `${flatIdx * 0.06}s` }}
-                    >
-                      {group.revealed[ji] ? jamo : '?'}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
-            ?를 눌러 힌트를 공개하세요 ({hintCount}회 사용)
-          </p>
-        </div>
+        <JamoGrid
+          jamos={hintJamos}
+          hintRevealed={hintRevealed!}
+          initialJamoRevealed={initialJamoRevealed!}
+          hintCount={hintCount}
+          isActive={isActive}
+          onReveal={revealJamo}
+        />
       )}
 
       <div className="flex w-full gap-2">
@@ -484,135 +423,32 @@ export default function Home() {
       )}
 
       {solved && (
-        <div className="mt-6 animate-pop-in rounded-xl border border-green-200 bg-green-50 px-6 py-6 text-center dark:border-green-800 dark:bg-green-950">
-          <p className="text-2xl font-bold text-green-700 dark:text-green-400">정답입니다!</p>
-          <p className="mt-2 text-green-600 dark:text-green-400">{attempts}번 만에 맞추셨어요</p>
-          <p className="mt-1 text-sm text-green-500 dark:text-green-500">
-            {streak}일 연속 정답
-            {longestStreak > streak && <span className="ml-2 text-green-400">최고 {longestStreak}일</span>}
-          </p>
-          <div className="mt-4">
-            <textarea
-              className="w-full resize-none rounded-lg border border-green-200 bg-white/50 p-3 text-xs text-zinc-600 dark:border-green-800 dark:bg-zinc-900/50 dark:text-zinc-400"
-              value={shareLines().join('\n')}
-              readOnly
-              rows={5}
-              onClick={e => (e.target as HTMLTextAreaElement).select()}
-            />
-          </div>
-          <div className="mt-3 flex items-center justify-center gap-1.5">
-            <Share2 className="mr-1 h-5 w-5 text-green-600 dark:text-green-400" />
-            <TooltipButton
-              tooltip="클립보드에 복사"
-              className="rounded-lg bg-green-600 p-2 text-white transition-colors hover:bg-green-500 dark:bg-green-700 dark:hover:bg-green-600"
-              onClick={share}
-            >
-              {copied ? <Check className="h-5 w-5" /> : <ClipboardCopy className="h-5 w-5" />}
-            </TooltipButton>
-            <TooltipButton
-              tooltip="마스토돈/미스키로 공유"
-              className="rounded-lg bg-green-600 p-2 text-white transition-colors hover:bg-green-500 dark:bg-green-700 dark:hover:bg-green-600"
-              onClick={shareFedi}
-            >
-              <span className="flex items-center gap-1.5">
-                <SiMastodon className="h-5 w-5" />
-                <SiMisskey className="h-5 w-5" />
-              </span>
-            </TooltipButton>
-          </div>
-        </div>
+        <SolvedCard
+          attempts={attempts}
+          streak={streak}
+          longestStreak={longestStreak}
+          shareText={shareLines().join('\n')}
+          onCopy={share}
+          onShareFedi={shareFedi}
+          copied={copied}
+        />
       )}
 
-      {logs.length > 0 && (
-        <div className="mt-6 w-full space-y-2">
-          {logs.map((entry, i) => {
-            const hintStr = 'hint' in entry.result ? entry.result.hint : '';
-            const hasHint = hintStr.length > 0;
-            return (
-            <div
-              key={i}
-              className={`log-enter rounded-lg border px-4 py-3 text-sm transition-colors ${
-                entry.result.correct
-                  ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400'
-                  : selectedHint !== null && hasHint && hintStr === selectedHint
-                  ? 'cursor-pointer border-green-300 bg-green-50/50 text-zinc-700 dark:border-green-600 dark:bg-green-950/50 dark:text-zinc-300'
-                  : hasHint
-                  ? 'cursor-pointer border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700/50'
-                  : 'border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
-              }`}
-              onClick={() => solved && entry.result.valid && hasHint && toggleHintSelection(i)}
-            >
-              <span className="mr-1 text-xs text-zinc-300 dark:text-zinc-600">{entry.attempt ?? (logs.length - i)}.</span>
-            <span className="font-medium">
-              {entry.jamoState ? (
-                <>
-                  <span className="mr-1">{entry.input}</span>
-                  {entry.jamoState.jamos.map((jamo, ji) => {
-                    const isNew = entry.jamoState!.newIndex !== undefined && ji === entry.jamoState!.newIndex;
-                    return (
-                    <span
-                      key={ji}
-                      className={`inline-flex items-center justify-center w-4 h-4 rounded-[3px] text-[11px] leading-none mx-px ${
-                        entry.jamoState!.revealed[ji]
-                          ? isNew
-                            ? 'font-bold text-white bg-blue-600 dark:text-white dark:bg-blue-500 scale-110'
-                            : 'text-zinc-700 dark:text-zinc-300'
-                          : 'text-zinc-300 dark:text-zinc-600'
-                      }`}
-                    >
-                      {entry.jamoState!.revealed[ji] ? jamo : '·'}
-                    </span>
-                    );
-                  })}
-                </>
-              ) : (
-                entry.input
-              )}
-            </span>
-              <span className="ml-2 text-zinc-400 dark:text-zinc-500">
-                {entry.result.correct
-                  ? '정답!'
-                  : !entry.result.valid
-                  ? '— ' + entry.result.reason
-                  : hasHint
-                  ? '— ' + hintStr
-                  : ''}
-              </span>
-            </div>
-            );
-          })}
-        </div>
-      )}
+      <LogList
+        logs={logs}
+        solved={solved}
+        selectedHint={selectedHint}
+        onToggleHint={toggleHintSelection}
+      />
     </div>
 
-    {showFediInput && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowFediInput(false)}>
-        <div className="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-800" onClick={e => e.stopPropagation()}>
-          <p className="mb-3 text-sm font-medium">마스토돈/미스키 인스턴스 주소를 입력하세요</p>
-          <div className="flex gap-2">
-            <input
-              ref={fediRef}
-              className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-700"
-              placeholder="mastodon.social"
-              defaultValue={fediInstance}
-              onKeyDown={e => e.key === 'Enter' && confirmFediInstance()}
-            />
-            <button
-              className="rounded-lg bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-500"
-              onClick={confirmFediInstance}
-            >
-              확인
-            </button>
-            <button
-              className="rounded-lg bg-zinc-200 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-600"
-              onClick={() => setShowFediInput(false)}
-            >
-              취소
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
+      {showFediInput && (
+        <FediModal
+          initialValue={fediInstance}
+          onConfirm={confirmFediInstance}
+          onClose={() => setShowFediInput(false)}
+        />
+      )}
     </>
   );
 }
