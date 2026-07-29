@@ -228,6 +228,7 @@ export function useGame() {
         localStorage.setItem('heari_streak', JSON.stringify({ current: cur, longest, lastDate: today }));
       }
       setLogs(l => [{ input: val, result: data, attempt: (data.valid ? prevAttempts + 1 : prevAttempts) }, ...l]);
+      if (data.valid) setAttempts(a => a + 1);
       if (data.valid && 'hint' in data) setSelectedHint(data.hint);
     } catch { /* ignore */ }
     setLoading(false);
