@@ -3,11 +3,11 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json bun.lock ./
-RUN bun install --production
+RUN bun install --production || bun install --production
 
 FROM base AS build
 COPY package.json bun.lock ./
-RUN bun install
+RUN bun install || bun install
 COPY . .
 RUN bun run build
 

@@ -21,8 +21,8 @@ self.addEventListener("push", (event) => {
     (async () => {
       await self.registration.showNotification(title, {
         body,
-        icon: "/pwa-icon?size=192",
-        badge: "/pwa-badge",
+        icon: "/pwa-icon-192.png",
+        badge: "/pwa-badge-96.png",
         tag: "new-game",
         data: { date, chosung },
       });
