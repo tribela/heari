@@ -86,6 +86,17 @@ export function getTodayString(): string {
   return `${y}-${m}-${day}`;
 }
 
+// KST 자정까지 남은 초 — 캐시 만료를 자정에 맞춰 다음날 데이터로 자연 갱신되게 함
+export function secondsUntilKstMidnight(now: number = Date.now()): number {
+  const kstNow = new Date(now + 9 * 60 * 60 * 1000);
+  const nextKstMidnight = Date.UTC(
+    kstNow.getUTCFullYear(),
+    kstNow.getUTCMonth(),
+    kstNow.getUTCDate() + 1,
+  ) - 9 * 60 * 60 * 1000;
+  return Math.max(1, Math.ceil((nextKstMidnight - now) / 1000));
+}
+
 function selectWord(words: string[], date: string): string {
   const [y, m, d] = date.split('-').map(Number);
   const ts = (Date.UTC(y, m - 1, d, 0, 0, 0) - 9 * 3600 * 1000) / 1000;

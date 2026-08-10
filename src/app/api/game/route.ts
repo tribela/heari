@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getDailyWord, getTodayString } from '@/lib/game';
+import { getDailyWord, getTodayString, secondsUntilKstMidnight } from '@/lib/game';
 import { getWordForDate } from '@/lib/db';
 import { sendPushToAll } from '@/lib/push';
 
-const CACHE_CONTROL = { headers: { 'Cache-Control': 'public, max-age=300, must-revalidate' } };
+function cacheControl(): { headers: { 'Cache-Control': string } } {
+  const maxAge = secondsUntilKstMidnight();
+  return { headers: { 'Cache-Control': `public, s-maxage=${maxAge}, max-age=${maxAge}, must-revalidate` } };
+}
 
 export async function GET() {
   const today = getTodayString();
@@ -20,5 +23,5 @@ export async function GET() {
     })).catch((e) => console.error('sendPushToAll failed:', e));
   }
 
-  return NextResponse.json({ chosung, date: today }, CACHE_CONTROL);
+  return NextResponse.json({ chosung, date: today }, cacheControl());
 }
