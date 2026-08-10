@@ -11,12 +11,13 @@ export async function GET() {
   const { chosung } = await getDailyWord();
 
   if (!existing) {
-    await sendPushToAll(JSON.stringify({
+    // 푸시는 응답과 무관하므로 백그라운드로 전송 (await 하면 하루 첫 요청이 느린 엔드포인트에 블로킹됨)
+    void sendPushToAll(JSON.stringify({
       title: '헤아리',
       body: `오늘의 헤아리기: ${chosung}`,
       date: today,
       chosung,
-    }));
+    })).catch((e) => console.error('sendPushToAll failed:', e));
   }
 
   return NextResponse.json({ chosung, date: today }, CACHE_CONTROL);

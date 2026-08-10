@@ -22,6 +22,7 @@ export async function sendPushToAll(payload: string): Promise<void> {
       webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         payload,
+        { timeout: 5000 },
       )
     )
   );
