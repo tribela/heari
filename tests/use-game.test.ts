@@ -43,6 +43,7 @@ describe('useGame attempts', () => {
 
   it('attempts=0 initially', async () => {
     const { result } = renderHook(() => useGame());
+    await waitFor(() => expect(result.current.game).not.toBeNull());
     expect(result.current.attempts).toBe(0);
   });
 
