@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getDailyWord, getTodayString, decomposeWord } from '@/lib/game';
+import { getDailyWord, getTodayString, decomposeWord, secondsUntilKstMidnight } from '@/lib/game';
 
-const CACHE_CTRL = { headers: { 'Cache-Control': 'public, max-age=300, must-revalidate' } };
+function cacheControl(): { headers: { 'Cache-Control': string } } {
+  const maxAge = secondsUntilKstMidnight();
+  return { headers: { 'Cache-Control': `public, s-maxage=${maxAge}, max-age=${maxAge}, must-revalidate` } };
+}
 
 export async function GET() {
   const { word } = await getDailyWord();
   const { jamos, initialRevealed } = decomposeWord(word);
-  return NextResponse.json({ jamos, initialRevealed, date: getTodayString() }, CACHE_CTRL);
+  return NextResponse.json({ jamos, initialRevealed, date: getTodayString() }, cacheControl());
 }
