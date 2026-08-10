@@ -149,14 +149,20 @@ describe('sw.js /api/game stale-while-revalidate', () => {
     expect((await cached.clone().json()).date).toBe(todayKst());
   });
 
-  it('fresh 캐시 (자정 이전): 재검증 없이 캐시 반환 (네트워크 호출 없음)', async () => {
-    const { dispatchFetch, networkCalls } = loadSw([
+  it('당일 캐시: 캐시 즉시 반환 + 백그라운드 재검증 진행 (date 같으면 메시지는 클라이언트가 무시)', async () => {
+    const { dispatchFetch, stores, messages, networkCalls } = loadSw([
       { name: 'heari-api-v1', url: GAME_URL, response: gameResponse(todayKst(), 86400) },
     ]);
     const { response, pending } = await dispatchFetch(GAME_URL);
-    await Promise.all(pending);
     expect((await response!.json()).date).toBe(todayKst());
-    expect(networkCalls.count).toBe(0);
+    expect(networkCalls.count).toBe(1);
+
+    await Promise.all(pending);
+
+    const cached = stores.get('heari-api-v1')!.get(GAME_URL)!;
+    expect((await cached.clone().json()).date).toBe(todayKst());
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({ type: 'new-game', date: todayKst() });
   });
 
   it('만료 캐시: stale 즉시 반환 + 백그라운드 재검증 + new-game 메시지', async () => {

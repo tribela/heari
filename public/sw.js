@@ -1,15 +1,6 @@
 const GAME_API = "/api/game";
 const CACHE_NAME = "heari-api-v1";
 
-// 서버가 내려준 Date + max-age(자정 만료)로 fresh 판단 — 본문 파싱 없음
-function isFresh(res) {
-  const date = Date.parse(res.headers.get("date") || "");
-  const cc = res.headers.get("cache-control") || "";
-  const m = /max-age=(\d+)/.exec(cc);
-  if (!date || !m) return false;
-  return Date.now() < date + Number(m[1]) * 1000;
-}
-
 self.addEventListener("install", () => self.skipWaiting());
 
 self.addEventListener("activate", (event) => {
@@ -22,7 +13,7 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// /api/game stale-while-revalidate: fresh면 캐시 즉시 반환, 만료면 stale 반환 후 백그라운드 재검증
+// /api/game stale-while-revalidate: 캐시 즉시 반환 + 항상 백그라운드 재검증 (date 같으면 클라이언트가 무시)
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== "GET") return;
@@ -40,8 +31,6 @@ self.addEventListener("fetch", (event) => {
         return res;
       }
 
-      if (isFresh(cached)) return cached;
-
       event.waitUntil(
         (async () => {
           try {
@@ -53,7 +42,7 @@ self.addEventListener("fetch", (event) => {
             for (const client of clients) {
               client.postMessage({ type: "new-game", date: freshData.date, chosung: freshData.chosung });
             }
-          } catch { /* 네트워크 실패 — stale 유지 */ }
+          } catch { /* 네트워크 실패 — 캐시 유지 */ }
         })()
       );
 
