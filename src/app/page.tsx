@@ -6,6 +6,7 @@ import NotificationBell from '@/components/notification-bell';
 import JamoGrid from '@/components/jamo-grid';
 import LogList from '@/components/log-list';
 import SolvedCard from '@/components/solved-card';
+import CreditFooter from '@/components/credit-footer';
 import FediModal from '@/components/fedi-modal';
 import TooltipButton from '@/components/tooltip-button';
 
@@ -155,6 +156,8 @@ export default function Home() {
         selectedHint={game.selectedHint}
         onToggleHint={game.toggleHintSelection}
       />
+
+      <CreditFooter />
     </div>
 
     {showFediInput && (
