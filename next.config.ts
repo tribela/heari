@@ -24,6 +24,16 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // 정적 프리렌더 기본 s-maxage=31536000 덮어쓰기 (Cloudflare 1년 캐시로 배포 미반영 장애 방지)
+        source: "/",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=60, s-maxage=300, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
         source: "/(.*)",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
