@@ -1,5 +1,6 @@
 'use client';
 
+import { Info } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const GYEON_URL = 'https://github.com/rycont/gyeon';
@@ -55,12 +56,14 @@ export default function CreditFooter() {
           onClick={() => setOpen((v) => !v)}
           aria-label="출처 정보"
           aria-expanded={open}
-          className="flex h-6 w-6 items-center justify-center text-base text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+          aria-controls="credit-note"
+          className="flex h-11 w-11 items-center justify-center text-base text-zinc-500 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
         >
-          <span aria-hidden="true">🛈</span>
+          <Info className="h-4 w-4" aria-hidden="true" />
         </button>
         {open && (
           <div
+            id="credit-note"
             role="note"
             className="absolute bottom-full mb-2 w-64 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-center text-xs leading-relaxed text-zinc-500 shadow-lg dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
           >
