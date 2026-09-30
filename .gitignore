@@ -37,6 +37,9 @@ yarn-error.log*
 cache.db
 data/
 
+# hint model test outputs
+hint-test*.csv
+
 # vercel
 .vercel
 

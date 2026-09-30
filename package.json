@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "bun test",
+    "test:hint-models": "bun scripts/hint-model-test.ts",
     "generate-vapid-keys": "node -e \"const w=require('web-push');const k=w.generateVAPIDKeys();console.log('VAPID_PUBLIC_KEY='+k.publicKey);console.log('VAPID_PRIVATE_KEY='+k.privateKey);console.log('# VAPID_SUBJECT=https://your-domain.com/  ← 도메인에 맞게 수정')\""
   },
   "dependencies": {

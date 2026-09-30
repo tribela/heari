@@ -1,8 +1,12 @@
 import { getCachedHint, setCachedHint, cleanOldCache, getRecentHints } from './db';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY ?? '';
-const MODEL = process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini';
-const MAX_RETRIES = 3;
+const MODELS = (process.env.OPENROUTER_MODELS ?? process.env.OPENROUTER_MODEL ?? 'openai/gpt-4.1-mini,deepseek/deepseek-chat')
+  .split(',')
+  .map((s) => s.trim())
+  .filter((s) => s.length > 0);
+const LEAK_RETRIES_PER_MODEL = 1;
+const MAX_TOKENS = 200;
 
 function stripQuotes(s: string): string {
   const quotes = ['"', "'", '「', '」', '『', '』'];
@@ -15,38 +19,98 @@ function stripQuotes(s: string): string {
 }
 
 function containsAnswer(hint: string, answer: string): boolean {
-  return answer.length > 0 && hint.includes(answer);
+  if (answer.length === 0) return false;
+  if (hint.includes(answer)) return true;
+  // 모델이 글자 사이에 공백/따옴표를 넣는 변형을 잡기 위한 정규화 검사
+  const strip = (s: string) => s.replace(/[\s'"‘’“”「」『』()?.!,~\-·]/g, '');
+  const normalizedAnswer = strip(answer);
+  if (normalizedAnswer.length > 0 && strip(hint).includes(normalizedAnswer)) return true;
+  return false;
+}
+
+function fallbackHint(input: string): string {
+  return `'${input}'은 정답이 아닙니다`;
+}
+
+function isBrokenFormat(hint: string): boolean {
+  return hint.includes('[이미 생성된 힌트들]') || hint.includes('\n');
+}
+
+function isUnusableHint(hint: string, answer: string): boolean {
+  return containsAnswer(hint, answer) || isBrokenFormat(hint);
 }
 
 export async function getHint(input: string, answer: string): Promise<string> {
+  return (await getHintWithMeta(input, answer)).hint;
+}
+
+export async function getHintWithMeta(
+  input: string,
+  answer: string
+): Promise<{ hint: string; model: string }> {
   await cleanOldCache();
 
   const cached = await getCachedHint(input, answer);
-  if (cached) return cached;
+  // 캐시에 유출 힌트가 저장되어 있을 수 있으므로 검증 후 반환
+  if (cached && !containsAnswer(cached, answer)) return { hint: cached, model: 'cache' };
 
-  const existingHints = await getRecentHints(answer);
+  const existingHints = (await getRecentHints(answer)).filter(
+    (h) => !isUnusableHint(h.hint, answer)
+  );
 
-  let hint = await callOpenRouter(input, answer, existingHints);
-  hint = stripQuotes(hint);
-
-  for (let i = 0; i < MAX_RETRIES && containsAnswer(hint, answer); i++) {
-    hint = await callOpenRouter(input, answer, existingHints);
-    hint = stripQuotes(hint);
+  for (const model of MODELS) {
+    try {
+      let hint = stripQuotes((await callOpenRouter(model, input, answer, existingHints)).text);
+      for (let i = 0; i < LEAK_RETRIES_PER_MODEL && isUnusableHint(hint, answer); i++) {
+        hint = stripQuotes((await callOpenRouter(model, input, answer, existingHints)).text);
+      }
+      if (!isUnusableHint(hint, answer)) {
+        await setCachedHint(input, answer, hint);
+        return { hint, model };
+      }
+      console.error(`Hint rejected from model ${model}, trying next model: ${hint.slice(0, 60)}`);
+    } catch (e) {
+      console.error(`Hint model ${model} failed, trying next model:`, e);
+    }
   }
 
-  await setCachedHint(input, answer, hint);
-  return hint;
+  const fallback = fallbackHint(input);
+  await setCachedHint(input, answer, fallback);
+  return { hint: fallback, model: 'fallback' };
+}
+
+export const HINT_MODELS: string[] = MODELS;
+
+export async function generateHintForModel(
+  model: string,
+  input: string,
+  answer: string
+): Promise<{ hint: string; provider: string }> {
+  const existingHints = (await getRecentHints(answer)).filter(
+    (h) => !isUnusableHint(h.hint, answer)
+  );
+  const { text, provider } = await callOpenRouter(model, input, answer, existingHints);
+  return { hint: stripQuotes(text), provider };
 }
 
 async function callOpenRouter(
+  model: string,
   input: string,
   answer: string,
   existingHints: { input: string; hint: string }[] = []
-): Promise<string> {
-  let existingHintsSection = '';
+): Promise<{ text: string; provider: string }> {
+  let referenceMessage: { role: string; content: string } | null = null;
   if (existingHints.length > 0) {
-    existingHintsSection = '\n\n[이미 생성된 힌트들 (중복을 피하세요)]\n' +
-      existingHints.map(h => `- '${h.input}': "${h.hint}"`).join('\n');
+    referenceMessage = {
+      role: 'user',
+      content: [
+        '[이미 생성된 힌트들 — 중복 방지용 참고 목록]',
+        ...existingHints.map((h) => `- '${h.input}': "${h.hint}"`),
+        '',
+        '위 목록은 참고용입니다. 목록의 어떤 문장도 출력·복사·인용하지 마세요.',
+        '목록과 핵심 명사·형용사·동사가 겹치지 않는 새로운 힌트 한 문장을 출력하세요.',
+      ].join('\n'),
+    };
   }
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -56,31 +120,31 @@ async function callOpenRouter(
       'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
     },
     body: JSON.stringify({
-      model: MODEL,
+      model,
       messages: [
         {
           role: 'system',
           content: `당신은 '헤아리기' 게임의 힌트 생성 AI입니다.
-
 [게임 규칙]
 - 정답 단어: '${answer}'
 - 사용자가 추측한 단어: '${input}'
 - 두 단어는 초성이 동일합니다.
 
 [힌트 생성 원칙]
-1. 정답 단어를 절대 직접 언급하지 마세요.
+1. 정답 단어('${answer}')를 출력문에 어떤 형태로도 포함하지 마세요. 정답 문자열이 그대로 들어가는 것은 물론, 정답을 작은따옴표·괄호로 감싸서 언급하는 것도 금지입니다. 출력문에 '${answer}'가 포함되면 그 힌트는 실패작입니다.
 2. 정답의 구체적 속성(색깔, 모양, 기능, 장소, 시간)을 직접 설명하지 마세요.
 3. 대신, 정답이 불러일으키는 감정, 분위기, 추상적 관념, 철학적 느낌을 표현하세요.
-4. 힌트 문장에 반드시 입력 단어('${input}')를 포함하세요. 입력 단어를 언급하지 않은 힌트는 무효입니다.
-5. 입력 단어와 정답 사이에 진짜 연관성이 느껴져야 합니다. 입력 단어에 대한 설명으로 끝나면 안 되고, 힌트를 읽었을 때 정답('${answer}')이 연상되어야 합니다. 입력은 출발점일 뿐, 초점은 항상 정답에 맞춰져야 합니다.
-6. 한 번의 힌트만으로 너무 많은 것을 유추할 수 있게는 하지 마세요.
-7. [이미 생성된 힌트들]과 모든 면에서 달라야 합니다. 특히 핵심 명사/형용사/동사의 반복을 엄격히 금지합니다. 아래 기존 힌트들에 등장한 어휘와 겹치지 않게 새로운 단어를 선택하세요.${existingHintsSection}
+4. 힌트 문장에 반드시 입력 단어('${input}')를 작은따옴표로 감싸서 포함하세요. 입력 단어를 언급하지 않은 힌트는 무효입니다.
+5. 작은따옴표는 입력 단어('${input}')를 감쌀 때 딱 한 번만 사용하세요. 정답이나 다른 단어를 따옴표로 감싸지 마세요.
+6. 입력 단어와 정답 사이에 진짜 연관성이 느껴져야 합니다. 입력 단어에 대한 설명으로 끝나면 안 되고, 힌트를 읽었을 때 정답('${answer}')이 연상되어야 합니다. 입력은 출발점일 뿐, 초점은 항상 정답에 맞춰져야 합니다. 단, 연상되게 할 뿐 정답 문자열을 쓰지는 마세요.
+7. 한 번의 힌트만으로 너무 많은 것을 유추할 수 있게는 하지 마세요.
+8. 사용자 메시지로 전달된 [이미 생성된 힌트들]이 있다면 그 목록과 모든 면에서 달라야 합니다. 특히 핵심 명사/형용사/동사의 반복을 엄격히 금지합니다. 목록의 어떤 문장도 출력·복사·인용하지 마세요.
 
 [다양한 표현 패턴 (참고용. 훨씬 더 다양하게 변형하세요)]
 - "'[입력]'보다는 [분위기]다"
 - "'[입력]'처럼 [공통점]이 있다"
 - "'[입력]'과/와 관련이 있다/없다"
-- "'[입력]'에서 [정답]을 떠올릴 수 있다"
+- "'[입력]'에서 연상되는 [분위기]다"
 - "'[입력]'에 비해 [특징]이 두드러진다"
 
 [좋은 예시]
@@ -100,11 +164,12 @@ async function callOpenRouter(
 [출력 형식]
 당신의 생각은 내부적으로 하고, 최종 출력은 단 한 문장(15~25자 내외)만 출력하세요.
 반드시 작은따옴표로 감싼 입력 단어('${input}')를 문장에 포함해야 합니다.
-따옴표, 괄호, 물음표, 설명, 부연은 절대 금지입니다.`,
+입력 단어를 감싸는 작은따옴표 외에 다른 따옴표·괄호·물음표·설명·부연은 절대 금지입니다.`,
         },
+        ...(referenceMessage ? [referenceMessage] : []),
       ],
       temperature: 0.95,
-      max_tokens: 200,
+      max_tokens: MAX_TOKENS,
     }),
   });
 
@@ -114,6 +179,12 @@ async function callOpenRouter(
     throw new Error(`OpenRouter API error: ${res.status}`);
   }
 
-  const data = await res.json() as { choices: { message: { content: string } }[] };
-  return data.choices[0].message.content.trim();
+  const data = await res.json() as {
+    choices: { message: { content: string } }[];
+    provider?: string;
+  };
+  return {
+    text: data.choices[0].message.content.trim(),
+    provider: data.provider ?? 'unknown',
+  };
 }

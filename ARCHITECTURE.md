@@ -110,7 +110,7 @@ lib/db.ts ──> data/cache.db (runtime, gitignored)
 | Env var | Default | Used in |
 |---|---|---|
 | `OPENROUTER_API_KEY` | — | `src/lib/hint.ts` |
-| `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | `src/lib/hint.ts` |
+| `OPENROUTER_MODELS` | `openai/gpt-4.1-mini,deepseek/deepseek-chat` | `src/lib/hint.ts` (콤마 구분 우선순위, `OPENROUTER_MODEL` 단일값도 하위호환) |
 | `TRUSTED_PROXY_IP` | — | `src/proxy.ts` (Cloudflare CIDRs) |
 | `RATE_LIMIT_MAX_GUESS` | 50 | `src/proxy.ts` |
 | `RATE_LIMIT_MAX_HINT` | 15 | `src/proxy.ts` |
